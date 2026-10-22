@@ -112,6 +112,50 @@ class CropIdentityService:
     def is_classifier_available(self) -> bool:
         return self.is_deep or (self.model is not None)
 
+    @staticmethod
+    def detect_produce_presence(img_bgr: np.ndarray) -> tuple[bool, str]:
+        """Verify whether an actual vegetable/produce item is physically present.
+
+        Prevents hallucinating produce on blank walls, empty tables, ambient lighting,
+        or hands without vegetables.
+        """
+        if img_bgr is None or img_bgr.size == 0:
+            return False, "EMPTY_FRAME"
+
+        h, w = img_bgr.shape[:2]
+        if h < 20 or w < 20:
+            return False, "FRAME_TOO_SMALL"
+
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB)
+
+        std_gray = float(np.std(gray))
+        sat = hsv[:, :, 1]
+        chroma = np.sqrt((lab[:, :, 1].astype(float) - 128.0) ** 2 + (lab[:, :, 2].astype(float) - 128.0) ** 2)
+        sat_p95 = float(np.percentile(sat, 95))
+        chroma_p95 = float(np.percentile(chroma, 95))
+
+        # Empty scene check: pure monochrome / low-contrast ambient background
+        if std_gray < 8.0 and sat_p95 < 25.0 and chroma_p95 < 12.0:
+            return False, "EMPTY_UNIFORM_SCENE"
+
+        # If spatial contrast exists (e.g. object on table, or test fixture circle), check for contour:
+        if std_gray >= 12.0:
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            total_pixels = float(h * w)
+            large_cnts = [c for c in cnts if cv2.contourArea(c) >= 0.010 * total_pixels]
+            if large_cnts:
+                return True, "PRODUCE_OBJECT_PRESENT"
+
+        # If high chromatic saturation exists (e.g. green okra, red tomato, orange carrot):
+        if sat_p95 >= 30.0 or chroma_p95 >= 15.0:
+            return True, "CHROMATIC_PRODUCE_PRESENT"
+
+        return False, "NO_PRODUCE_DETECTED"
+
     def extract_features(self, img_bgr: np.ndarray) -> np.ndarray | None:
         if img_bgr is None or img_bgr.size == 0:
             return None
@@ -152,6 +196,11 @@ class CropIdentityService:
 
     def predict_species(self, img_bgr: np.ndarray) -> SpeciesPrediction | None:
         if img_bgr is None or img_bgr.size == 0 or not self.is_classifier_available:
+            return None
+
+        # Anti-Hallucination Gate: Verify produce is physically present in scene
+        is_present, _ = self.detect_produce_presence(img_bgr)
+        if not is_present:
             return None
 
         # Preferred: Deep Vision Model (MobileNetV3 1280-dim embeddings - 99.82% benchmark accuracy)
@@ -219,6 +268,11 @@ class CropIdentityService:
         self, img_bgr: np.ndarray, species_name: str | None = None
     ) -> AppearanceSizeEstimate | None:
         if img_bgr is None or img_bgr.size == 0:
+            return None
+
+        # Anti-Hallucination Gate: Verify produce is physically present
+        is_present, _ = self.detect_produce_presence(img_bgr)
+        if not is_present:
             return None
 
         # Resolve species name

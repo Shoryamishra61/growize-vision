@@ -46,6 +46,14 @@ def camera_probe(index: int = 0) -> dict[str, Any]:
         "frame_shape": None,
         "error": None,
     }
+    # On Linux cloud containers (e.g. Hugging Face Spaces) without physical V4L2 device
+    if not sys.platform.startswith("win"):
+        import os
+        from pathlib import Path
+        if os.environ.get("SPACE_ID") or not Path(f"/dev/video{index}").exists():
+            result["note"] = "Cloud container active. Live camera stream received via browser webcam."
+            return result
+
     cap = None
     try:
         backend = cv2.CAP_DSHOW if sys.platform.startswith("win") else 0

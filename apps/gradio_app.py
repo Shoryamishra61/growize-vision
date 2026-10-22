@@ -280,6 +280,24 @@ def summary_uncalibrated_html(
     """
 
 
+def summary_ready_html() -> str:
+    return """
+    <div class="gv-result-card gv-review">
+      <div class="gv-kicker">Produce Grading & Metrology Station</div>
+      <div class="gv-headline">Ready · Place Vegetable in View</div>
+      <div class="gv-measurement">Awaiting produce in inspection area</div>
+      <div class="gv-chip-row">
+        <span class="gv-chip">Station Active</span>
+        <span class="gv-chip">18 Indian Crops</span>
+        <span class="gv-chip">All Lighting Conditions</span>
+      </div>
+      <div style="background: rgba(255, 255, 255, 0.04); border-left: 3px solid #10b981; padding: 10px 14px; margin: 12px 0; border-radius: 4px; font-size: 0.9rem; color: #d1fae5;">
+        Hold or place any supported vegetable (Okra, Tomato, Potato, Onion, Cucumber, Carrot, Cabbage, etc.) in view. The system will automatically detect the produce, classify the crop species, and grade size (SMALL vs BIG).
+      </div>
+    </div>
+    """
+
+
 def _table_rows(result: InspectionResult) -> list[list[str]]:
     rows: list[list[str]] = []
     for instance in result.instances:
@@ -412,6 +430,10 @@ def inspect_image_ui(
                     decoded.bgr, appearance_est, species_name=sp_name
                 )
                 rgb = bgr_to_rgb(annotated)
+            else:
+                summary_card = summary_ready_html()
+                table_data = [["—", "AWAITING_PRODUCE", "—", "No produce detected in frame", "—", "—", "Ready", "Place vegetable in camera view"]]
+                rgb = bgr_to_rgb(decoded.bgr)
 
         if summary_card is None:
             summary_card = summary_html(result)
@@ -524,6 +546,10 @@ def live_inspect_ui(
                     frame_bgr, appearance_est, species_name=sp_name
                 )
                 session.last_annotated_rgb = bgr_to_rgb(annotated)
+            else:
+                summary_card = summary_ready_html()
+                table_data = [["—", "AWAITING_PRODUCE", "—", "No produce detected in frame", "—", "—", "Ready", "Place vegetable in camera view"]]
+                session.last_annotated_rgb = bgr_to_rgb(frame_bgr)
 
         if summary_card is None:
             summary_card = summary_html(result, stats)
