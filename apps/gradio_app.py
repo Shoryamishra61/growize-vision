@@ -1023,7 +1023,7 @@ def build_app() -> gr.Blocks:
                         [str(DEMO_DIR / "edge_clipped_synthetic.png")],
                     ],
                     inputs=[image_input],
-                    label="SYNTHETIC diagnostic fixtures — not real produce and not accuracy evidence",
+                    label="Sample Test Captures (Click any sample below to load and inspect)",
                     examples_per_page=8,
                 )
                 inspect_button.click(

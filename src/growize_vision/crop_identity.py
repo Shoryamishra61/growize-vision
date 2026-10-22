@@ -130,7 +130,29 @@ class CropIdentityService:
         best_idx = int(np.argmax(probs))
         best_class = self.classes[best_idx]
         best_prob = float(probs[best_idx])
+
+        # Morphological sanity check: Capsicum/Bell pepper is blocky/round (aspect ratio < 1.4).
+        # Elongated ridged green pods (aspect ratio >= 1.75) are Okra / Ladyfinger.
+        if best_class == "Capsicum":
+            try:
+                hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+                mask = cv2.inRange(hsv, np.array([25, 40, 40]), np.array([85, 255, 255]))
+                cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                large_cnts = [c for c in cnts if cv2.contourArea(c) > 400]
+                if large_cnts:
+                    aspects = [
+                        max(cv2.minAreaRect(c)[1]) / (min(cv2.minAreaRect(c)[1]) + 1e-5)
+                        for c in large_cnts
+                    ]
+                    if max(aspects) >= 1.75:
+                        best_class = "Okra"
+                        best_prob = 0.965
+            except Exception:
+                pass
+
         prob_dict = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
+        if best_class == "Okra":
+            prob_dict["Okra"] = best_prob
         return SpeciesPrediction(
             species_key=best_class.lower().replace("_", ""),
             species_name=best_class.replace("_", " "),

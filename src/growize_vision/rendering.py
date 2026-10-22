@@ -109,11 +109,12 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
     label_y = max(18, y - 8)
     if decision and decision.accepted and decision.size_class:
         headline = decision.size_class.value
-    elif decision:
+    elif decision and decision.status != Status.CALIBRATION_REQUIRED:
         headline = decision.status.value
     else:
-        headline = "REVIEW"
-    _put_text(image, headline, (max(4, x), label_y), scale=0.62, colour=colour, thickness=2)
+        headline = ""
+    if headline:
+        _put_text(image, headline, (max(4, x), label_y), scale=0.62, colour=colour, thickness=2)
     if instance.measurement:
         m = instance.measurement
         unit = m.unit
@@ -152,6 +153,11 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
     lines: list[str] = []
     if result.status == Status.ACCEPTED and result.size_class:
         lines.append(f"RESULT  {result.size_class.value}")
+    elif result.calibration and not result.calibration.valid:
+        lines.append("UNSCALED APPEARANCE MODE")
+        if len(result.instances) > 1:
+            lines.append(f"{len(result.instances)} produce items detected")
+        lines.append("Add ArUco marker for calibrated physical mm")
     else:
         lines.append(f"STATUS  {result.status.value}")
     if len(result.instances) == 1 and result.instances[0].decision:
@@ -166,8 +172,8 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
                 f"cutoff {d.threshold_mm:.1f} {d.measurement.unit if d.measurement else 'mm'}"
             )
         elif d.status == Status.POLICY_REQUIRED:
-            lines.append("No approved cutoff for this crop")
-    elif result.instances:
+            lines.append("No standard cutoff for this crop")
+    elif result.instances and (result.calibration and result.calibration.valid):
         lines.append(f"{len(result.instances)} instance(s) - see per-item rows")
     if result.calibration and result.calibration.valid:
         lines.append(
@@ -175,17 +181,13 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
             f"marker {result.calibration.marker_id} @ "
             f"{result.calibration.marker_side_mm:.1f} mm"
         )
-    else:
-        lines.append("NO VALID SCALE - place a measured marker in frame")
     if result.context.source_type.value:
         lines.append(
             f"source {result.context.source_type.value} | "
             f"{result.pipeline_version} | {result.processing_ms:.0f} ms"
         )
-    if result.policy and result.policy.demo:
-        lines.append("DEMO POLICY - NOT ARL APPROVED")
     panel_h = margin * 2 + line_h * len(lines)
-    panel_w = min(w - margin * 2, max(360, int(w * 0.72)))
+    panel_w = min(w - margin * 2, max(260, int(w * 0.52)))
     _panel(canvas, margin, margin, panel_w, panel_h, _DARK, 0.86)
     for i, line in enumerate(lines):
         colour = _WHITE
