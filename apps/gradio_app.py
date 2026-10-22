@@ -1261,9 +1261,10 @@ demo = build_app()
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("GROWIZE_PORT", "7860"))
+    port = int(os.environ.get("PORT", os.environ.get("GROWIZE_PORT", "7860")))
+    host = os.environ.get("GRADIO_SERVER_NAME", os.environ.get("GROWIZE_HOST", "0.0.0.0"))
     demo.queue(default_concurrency_limit=1, max_size=16).launch(
-        server_name=os.environ.get("GROWIZE_HOST", "127.0.0.1"),
+        server_name=host,
         server_port=port,
         share=False,
         debug=False,

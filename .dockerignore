@@ -1,0 +1,15 @@
+.git
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+data/raw
+data/kaggle_veg
+data/kaggle_sample
+data/kaggle_sources
+data/calibrated_real_samples
+outputs/
+reports/app_server.log
+test_evidence/
+.venv
+venv
