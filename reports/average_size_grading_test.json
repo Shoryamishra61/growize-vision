@@ -1,0 +1,107 @@
+{
+  "Bean": {
+    "total_evaluated": 100,
+    "small": 47,
+    "big": 50,
+    "borderline": 3,
+    "median_ref_area": 9379.25
+  },
+  "Bitter_Gourd": {
+    "total_evaluated": 100,
+    "small": 48,
+    "big": 44,
+    "borderline": 8,
+    "median_ref_area": 15109.5
+  },
+  "Bottle_Gourd": {
+    "total_evaluated": 100,
+    "small": 51,
+    "big": 37,
+    "borderline": 12,
+    "median_ref_area": 13252.75
+  },
+  "Brinjal": {
+    "total_evaluated": 100,
+    "small": 51,
+    "big": 42,
+    "borderline": 7,
+    "median_ref_area": 18792.0
+  },
+  "Broccoli": {
+    "total_evaluated": 100,
+    "small": 44,
+    "big": 52,
+    "borderline": 4,
+    "median_ref_area": 11113.25
+  },
+  "Cabbage": {
+    "total_evaluated": 100,
+    "small": 57,
+    "big": 39,
+    "borderline": 4,
+    "median_ref_area": 16430.25
+  },
+  "Capsicum": {
+    "total_evaluated": 100,
+    "small": 42,
+    "big": 51,
+    "borderline": 7,
+    "median_ref_area": 24027.5
+  },
+  "Carrot": {
+    "total_evaluated": 100,
+    "small": 25,
+    "big": 58,
+    "borderline": 17,
+    "median_ref_area": 12564.25
+  },
+  "Cauliflower": {
+    "total_evaluated": 100,
+    "small": 40,
+    "big": 54,
+    "borderline": 6,
+    "median_ref_area": 19046.75
+  },
+  "Cucumber": {
+    "total_evaluated": 100,
+    "small": 49,
+    "big": 44,
+    "borderline": 7,
+    "median_ref_area": 21186.25
+  },
+  "Papaya": {
+    "total_evaluated": 100,
+    "small": 37,
+    "big": 49,
+    "borderline": 14,
+    "median_ref_area": 16820.5
+  },
+  "Potato": {
+    "total_evaluated": 100,
+    "small": 51,
+    "big": 45,
+    "borderline": 4,
+    "median_ref_area": 15634.0
+  },
+  "Pumpkin": {
+    "total_evaluated": 100,
+    "small": 48,
+    "big": 43,
+    "borderline": 9,
+    "median_ref_area": 21057.25
+  },
+  "Radish": {
+    "total_evaluated": 100,
+    "small": 46,
+    "big": 47,
+    "borderline": 7,
+    "median_ref_area": 13941.0
+  },
+  "Tomato": {
+    "total_evaluated": 100,
+    "small": 45,
+    "big": 45,
+    "borderline": 10,
+    "median_ref_area": 22543.0
+  }
+}

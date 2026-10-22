@@ -1,0 +1,487 @@
+{
+  "total": 60,
+  "correct": 44,
+  "accuracy": 0.7333333333333333,
+  "samples": [
+    {
+      "file": "data/calibrated_real_samples\\potato_small_00.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_01.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.369327545166016,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_02.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_03.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": null,
+      "measurement_mm": null,
+      "status": "LOW_IMAGE_QUALITY"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_04.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_05.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.351682662963867,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_06.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_07.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_08.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_small_09.jpg",
+      "crop": "potato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_00.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_01.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_02.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_03.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_04.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_05.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8681182861328,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_06.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_07.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_08.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\potato_big_09.jpg",
+      "crop": "potato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_00.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 13.111438751220703,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_01.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.36861801147461,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_02.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 30.616546630859375,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_03.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 29.16602897644043,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_04.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.185251235961914,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_05.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.365800857543945,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_06.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.345321655273438,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_07.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 26.624086380004883,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_08.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": null,
+      "measurement_mm": null,
+      "status": "NO_OBJECT"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_small_09.jpg",
+      "crop": "tomato",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 31.364391326904297,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_00.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 49.71382141113281,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_01.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_02.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8380889892578,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_03.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.86924743652344,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_04.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.88722229003906,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_05.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_06.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 93.56940460205078,
+      "status": "MULTIPLE_OBJECTS"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_07.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": null,
+      "status": "MULTIPLE_OBJECTS"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_08.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 52.634761810302734,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\tomato_big_09.jpg",
+      "crop": "tomato",
+      "expected": "BIG",
+      "predicted": "BIG",
+      "measurement_mm": 137.8436737060547,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_00.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.7373046875,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_01.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.728607177734375,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_02.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.73295593261719,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_03.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.72773742675781,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_04.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.70859909057617,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_05.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.72242736816406,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_06.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.73594665527344,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_07.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.73460388183594,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_08.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.725128173828125,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_small_09.jpg",
+      "crop": "cucumber",
+      "expected": "SMALL",
+      "predicted": "SMALL",
+      "measurement_mm": 32.73382568359375,
+      "status": "ACCEPTED"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_00.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.96987915039062,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_01.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.83367919921875,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_02.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.92532348632812,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_03.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.83453369140625,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_04.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.911376953125,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_05.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.943359375,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_06.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.96229553222656,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_07.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.96067810058594,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_08.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.96987915039062,
+      "status": "REVIEW_BORDERLINE"
+    },
+    {
+      "file": "data/calibrated_real_samples\\cucumber_big_09.jpg",
+      "crop": "cucumber",
+      "expected": "BIG",
+      "predicted": null,
+      "measurement_mm": 143.92369079589844,
+      "status": "REVIEW_BORDERLINE"
+    }
+  ]
+}
