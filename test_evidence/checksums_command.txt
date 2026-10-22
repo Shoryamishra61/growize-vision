@@ -1,0 +1,6 @@
+$ C:\Python310\python.exe scripts/build_checksums.py
+
+Wrote C:\code_shit\projects\agriculture vegetables\CHECKSUMS.sha256 with 107 files
+
+
+exit_code=0

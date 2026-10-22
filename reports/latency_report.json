@@ -4,7 +4,7 @@
   "scope": "Single-frame, already-decoded, synthetic-fixture CPU latency on one workstation. Not accuracy, camera throughput, concurrent-load, or field performance.",
   "evidence_class": "ENGINEERING_MEASUREMENT_ONLY",
   "environment": {
-    "timestamp_utc": "2026-10-22T16:28:54.521766+00:00",
+    "timestamp_utc": "2026-10-22T17:57:04.168097+00:00",
     "python": "3.10.11",
     "platform": "Windows-10-10.0.26300-SP0",
     "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
@@ -33,21 +33,21 @@
   "aggregate": {
     "wall": {
       "count": 80,
-      "min_ms": 107.775,
-      "mean_ms": 116.04,
-      "median_ms": 115.971,
-      "p95_ms": 124.306,
-      "max_ms": 127.933
+      "min_ms": 122.045,
+      "mean_ms": 142.956,
+      "median_ms": 137.092,
+      "p95_ms": 171.107,
+      "max_ms": 195.341
     },
     "internal": {
       "count": 80,
-      "min_ms": 107.21,
-      "mean_ms": 115.303,
-      "median_ms": 115.232,
-      "p95_ms": 123.537,
-      "max_ms": 127.21
+      "min_ms": 121.135,
+      "mean_ms": 142.031,
+      "median_ms": 136.278,
+      "p95_ms": 169.844,
+      "max_ms": 194.083
     },
-    "median_of_fixture_medians_ms": 116.038
+    "median_of_fixture_medians_ms": 137.174
   },
   "fixtures": [
     {
@@ -60,19 +60,19 @@
       "status": "ACCEPTED",
       "wall": {
         "count": 10,
-        "min_ms": 112.65,
-        "mean_ms": 113.945,
-        "median_ms": 114.111,
-        "p95_ms": 115.028,
-        "max_ms": 115.11
+        "min_ms": 125.281,
+        "mean_ms": 135.678,
+        "median_ms": 133.498,
+        "p95_ms": 145.883,
+        "max_ms": 147.111
       },
       "internal": {
         "count": 10,
-        "min_ms": 111.952,
-        "mean_ms": 113.264,
-        "median_ms": 113.306,
-        "p95_ms": 114.46,
-        "max_ms": 114.489
+        "min_ms": 124.327,
+        "mean_ms": 134.845,
+        "median_ms": 132.632,
+        "p95_ms": 145.082,
+        "max_ms": 146.265
       }
     },
     {
@@ -85,19 +85,19 @@
       "status": "ACCEPTED",
       "wall": {
         "count": 10,
-        "min_ms": 119.956,
-        "mean_ms": 123.047,
-        "median_ms": 122.368,
-        "p95_ms": 127.813,
-        "max_ms": 127.933
+        "min_ms": 130.215,
+        "mean_ms": 135.98,
+        "median_ms": 136.545,
+        "p95_ms": 137.726,
+        "max_ms": 138.224
       },
       "internal": {
         "count": 10,
-        "min_ms": 119.233,
-        "mean_ms": 122.259,
-        "median_ms": 121.506,
-        "p95_ms": 127.119,
-        "max_ms": 127.21
+        "min_ms": 128.805,
+        "mean_ms": 134.966,
+        "median_ms": 135.594,
+        "p95_ms": 136.492,
+        "max_ms": 136.806
       }
     },
     {
@@ -110,19 +110,19 @@
       "status": "ACCEPTED",
       "wall": {
         "count": 10,
-        "min_ms": 115.851,
-        "mean_ms": 117.975,
-        "median_ms": 118.101,
-        "p95_ms": 119.805,
-        "max_ms": 119.947
+        "min_ms": 131.597,
+        "mean_ms": 140.138,
+        "median_ms": 137.803,
+        "p95_ms": 152.339,
+        "max_ms": 157.683
       },
       "internal": {
         "count": 10,
-        "min_ms": 115.125,
-        "mean_ms": 117.242,
-        "median_ms": 117.358,
-        "p95_ms": 119.027,
-        "max_ms": 119.308
+        "min_ms": 130.953,
+        "mean_ms": 139.23,
+        "median_ms": 136.708,
+        "p95_ms": 151.51,
+        "max_ms": 156.961
       }
     },
     {
@@ -135,19 +135,19 @@
       "status": "ACCEPTED",
       "wall": {
         "count": 10,
-        "min_ms": 117.075,
-        "mean_ms": 118.499,
-        "median_ms": 117.491,
-        "p95_ms": 122.647,
-        "max_ms": 124.764
+        "min_ms": 131.2,
+        "mean_ms": 145.676,
+        "median_ms": 143.21,
+        "p95_ms": 163.406,
+        "max_ms": 167.618
       },
       "internal": {
         "count": 10,
-        "min_ms": 116.414,
-        "mean_ms": 117.645,
-        "median_ms": 116.538,
-        "p95_ms": 121.87,
-        "max_ms": 124.009
+        "min_ms": 130.451,
+        "mean_ms": 144.735,
+        "median_ms": 142.283,
+        "p95_ms": 162.543,
+        "max_ms": 166.867
       }
     },
     {
@@ -160,19 +160,19 @@
       "status": "CALIBRATION_REQUIRED",
       "wall": {
         "count": 10,
-        "min_ms": 115.777,
-        "mean_ms": 118.007,
-        "median_ms": 117.139,
-        "p95_ms": 122.792,
-        "max_ms": 125.729
+        "min_ms": 128.272,
+        "mean_ms": 136.932,
+        "median_ms": 136.317,
+        "p95_ms": 147.378,
+        "max_ms": 151.258
       },
       "internal": {
         "count": 10,
-        "min_ms": 115.124,
-        "mean_ms": 117.296,
-        "median_ms": 116.537,
-        "p95_ms": 122.058,
-        "max_ms": 125.061
+        "min_ms": 127.177,
+        "mean_ms": 136.071,
+        "median_ms": 135.46,
+        "p95_ms": 146.448,
+        "max_ms": 150.238
       }
     },
     {
@@ -185,19 +185,19 @@
       "status": "NO_OBJECT",
       "wall": {
         "count": 10,
-        "min_ms": 107.775,
-        "mean_ms": 109.18,
-        "median_ms": 108.823,
-        "p95_ms": 111.231,
-        "max_ms": 111.416
+        "min_ms": 122.045,
+        "mean_ms": 131.928,
+        "median_ms": 129.168,
+        "p95_ms": 145.819,
+        "max_ms": 147.855
       },
       "internal": {
         "count": 10,
-        "min_ms": 107.21,
-        "mean_ms": 108.551,
-        "median_ms": 108.218,
-        "p95_ms": 110.62,
-        "max_ms": 110.818
+        "min_ms": 121.135,
+        "mean_ms": 131.093,
+        "median_ms": 128.345,
+        "p95_ms": 144.979,
+        "max_ms": 147.171
       }
     },
     {
@@ -210,19 +210,19 @@
       "status": "LOW_IMAGE_QUALITY",
       "wall": {
         "count": 10,
-        "min_ms": 111.463,
-        "mean_ms": 112.541,
-        "median_ms": 112.559,
-        "p95_ms": 113.618,
-        "max_ms": 113.733
+        "min_ms": 157.291,
+        "mean_ms": 172.164,
+        "median_ms": 169.082,
+        "p95_ms": 190.441,
+        "max_ms": 195.341
       },
       "internal": {
         "count": 10,
-        "min_ms": 110.832,
-        "mean_ms": 111.808,
-        "median_ms": 111.834,
-        "p95_ms": 112.91,
-        "max_ms": 113.112
+        "min_ms": 156.352,
+        "mean_ms": 171.068,
+        "median_ms": 167.82,
+        "p95_ms": 189.355,
+        "max_ms": 194.083
       }
     },
     {
@@ -235,19 +235,19 @@
       "status": "OCCLUDED",
       "wall": {
         "count": 10,
-        "min_ms": 113.194,
-        "mean_ms": 115.129,
-        "median_ms": 114.937,
-        "p95_ms": 118.226,
-        "max_ms": 119.638
+        "min_ms": 134.722,
+        "mean_ms": 145.156,
+        "median_ms": 141.451,
+        "p95_ms": 160.775,
+        "max_ms": 162.036
       },
       "internal": {
         "count": 10,
-        "min_ms": 112.482,
-        "mean_ms": 114.359,
-        "median_ms": 114.138,
-        "p95_ms": 117.375,
-        "max_ms": 118.805
+        "min_ms": 133.714,
+        "mean_ms": 144.242,
+        "median_ms": 140.572,
+        "p95_ms": 159.673,
+        "max_ms": 160.962
       }
     }
   ],

@@ -1,0 +1,7 @@
+$ C:\Python310\python.exe scripts/evaluate_synthetic.py
+
+Synthetic contract report written to C:\code_shit\projects\agriculture vegetables\reports\synthetic_evaluation.json
+8/8 checks passed; status=PASS
+
+
+exit_code=0

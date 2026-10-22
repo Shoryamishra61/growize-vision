@@ -1,0 +1,7 @@
+$ C:\Python310\python.exe scripts/benchmark_latency.py --runs 10 --warmup 2
+
+Measured latency written to C:\code_shit\projects\agriculture vegetables\reports\latency_report.json
+wall median=137.1 ms p95=171.1 ms over 80 observations
+
+
+exit_code=0

@@ -1,0 +1,88 @@
+{
+  "generated_at_utc": "2026-10-22T17:57:05.905316+00:00",
+  "python": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+  "commands": [
+    {
+      "name": "pytest",
+      "command": [
+        "C:\\Python310\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--junitxml=reports/pytest_junit.xml"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-22T17:56:32.772084+00:00",
+      "finished_utc": "2026-10-22T17:56:46.918182+00:00",
+      "output_tail": [
+        "........................................................................ [ 43%]",
+        "........................................................................ [ 87%]",
+        "....................                                                     [100%]",
+        "164 passed in 10.98s"
+      ]
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "C:\\Python310\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-22T17:56:46.921184+00:00",
+      "finished_utc": "2026-10-22T17:56:47.257539+00:00",
+      "output_tail": [
+        "All checks passed!"
+      ]
+    },
+    {
+      "name": "synthetic",
+      "command": [
+        "C:\\Python310\\python.exe",
+        "scripts/evaluate_synthetic.py"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-22T17:56:47.260535+00:00",
+      "finished_utc": "2026-10-22T17:56:49.499606+00:00",
+      "output_tail": [
+        "Synthetic contract report written to C:\\code_shit\\projects\\agriculture vegetables\\reports\\synthetic_evaluation.json",
+        "8/8 checks passed; status=PASS"
+      ]
+    },
+    {
+      "name": "latency",
+      "command": [
+        "C:\\Python310\\python.exe",
+        "scripts/benchmark_latency.py",
+        "--runs",
+        "10",
+        "--warmup",
+        "2"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-22T17:56:49.503616+00:00",
+      "finished_utc": "2026-10-22T17:57:04.281583+00:00",
+      "output_tail": [
+        "Measured latency written to C:\\code_shit\\projects\\agriculture vegetables\\reports\\latency_report.json",
+        "wall median=137.1 ms p95=171.1 ms over 80 observations"
+      ]
+    },
+    {
+      "name": "failure_gallery",
+      "command": [
+        "C:\\Python310\\python.exe",
+        "scripts/build_failure_gallery.py"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-22T17:57:04.283583+00:00",
+      "finished_utc": "2026-10-22T17:57:05.786117+00:00",
+      "output_tail": [
+        "Failure gallery: C:\\code_shit\\projects\\agriculture vegetables\\reports\\failure_gallery",
+        "Cases: 4; contract failures: none"
+      ]
+    }
+  ],
+  "note": "Synthetic and latency evidence are not real-produce accuracy."
+}

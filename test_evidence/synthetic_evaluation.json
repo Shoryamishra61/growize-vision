@@ -1,0 +1,196 @@
+{
+  "report_type": "synthetic_contract_evaluation",
+  "status": "PASS",
+  "scope": "Synthetic fixtures only. Verifies status precedence, refusal logic, threshold wiring, and known planar geometry. Not real-produce accuracy.",
+  "evidence_class": "SYNTHETIC_CONTRACT_TEST_ONLY",
+  "environment": {
+    "timestamp_utc": "2026-10-22T17:56:49.392613+00:00",
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "opencv": "4.11.0",
+    "numpy": "2.2.6",
+    "growize_vision": "0.1.0",
+    "execution_device": "CPU",
+    "cuda_claimed": false
+  },
+  "config": {
+    "policy_version": "policy-2026-10-22.1",
+    "policy_sha256": "65b92080f0cd9d8dfe8d98c90ef26b557e3898345d9d28a57f89f9c06210dec6",
+    "settings_version": "inference-2026-10-22.1",
+    "settings_sha256": "26c9c37c06c0c9adbb62634024200b5cb2d124b2cb207feda4459533dd7b5ab1"
+  },
+  "summary": {
+    "fixtures_checked": 8,
+    "checks_passed": 8,
+    "checks_failed": 0,
+    "failed_fixtures": [],
+    "geometry_observations": 4,
+    "median_absolute_geometry_delta_mm": 0.179,
+    "max_absolute_geometry_delta_mm": 0.268,
+    "note": "Geometry deltas compare synthetic vector truth with the measured silhouette under demo thresholds; they do not estimate crop sizing error on real produce."
+  },
+  "fixtures": [
+    {
+      "fixture_id": "potato_small_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\potato_small_synthetic.png",
+      "sha256_match": true,
+      "expected": "SMALL",
+      "actual_status": "ACCEPTED",
+      "actual_size_class": "SMALL",
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": 35.279,
+      "vector_truth_mm": 35.079,
+      "absolute_geometry_delta_mm": 0.2,
+      "measurement_uncertainty_mm": 2.486,
+      "reasons": [
+        "INTERVAL_ENTIRELY_BELOW_THRESHOLD",
+        "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+      ]
+    },
+    {
+      "fixture_id": "potato_big_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\potato_big_synthetic.png",
+      "sha256_match": true,
+      "expected": "BIG",
+      "actual_status": "ACCEPTED",
+      "actual_size_class": "BIG",
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": 72.289,
+      "vector_truth_mm": 72.131,
+      "absolute_geometry_delta_mm": 0.158,
+      "measurement_uncertainty_mm": 2.565,
+      "reasons": [
+        "INTERVAL_ENTIRELY_AT_OR_ABOVE_THRESHOLD",
+        "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+      ]
+    },
+    {
+      "fixture_id": "okra_small_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\okra_small_synthetic.png",
+      "sha256_match": true,
+      "expected": "SMALL",
+      "actual_status": "ACCEPTED",
+      "actual_size_class": "SMALL",
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": 82.265,
+      "vector_truth_mm": 81.997,
+      "absolute_geometry_delta_mm": 0.268,
+      "measurement_uncertainty_mm": 2.59,
+      "reasons": [
+        "INTERVAL_ENTIRELY_BELOW_THRESHOLD",
+        "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+      ]
+    },
+    {
+      "fixture_id": "okra_big_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\okra_big_synthetic.png",
+      "sha256_match": true,
+      "expected": "BIG",
+      "actual_status": "ACCEPTED",
+      "actual_size_class": "BIG",
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": 142.374,
+      "vector_truth_mm": 142.257,
+      "absolute_geometry_delta_mm": 0.117,
+      "measurement_uncertainty_mm": 2.838,
+      "reasons": [
+        "INTERVAL_ENTIRELY_AT_OR_ABOVE_THRESHOLD",
+        "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+      ]
+    },
+    {
+      "fixture_id": "no_marker_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\no_marker_synthetic.png",
+      "sha256_match": true,
+      "expected": "CALIBRATION_REQUIRED",
+      "actual_status": "CALIBRATION_REQUIRED",
+      "actual_size_class": null,
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": null,
+      "vector_truth_mm": null,
+      "absolute_geometry_delta_mm": null,
+      "measurement_uncertainty_mm": null,
+      "reasons": [
+        "A valid marker with the user-measured outer side length is required."
+      ]
+    },
+    {
+      "fixture_id": "empty_mat_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\empty_mat_synthetic.png",
+      "sha256_match": true,
+      "expected": "NO_OBJECT",
+      "actual_status": "NO_OBJECT",
+      "actual_size_class": null,
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": null,
+      "vector_truth_mm": null,
+      "absolute_geometry_delta_mm": null,
+      "measurement_uncertainty_mm": null,
+      "reasons": [
+        "NO_OBJECT: no foreground vegetable instance was detected."
+      ]
+    },
+    {
+      "fixture_id": "blurred_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\blurred_synthetic.png",
+      "sha256_match": true,
+      "expected": "LOW_IMAGE_QUALITY",
+      "actual_status": "LOW_IMAGE_QUALITY",
+      "actual_size_class": null,
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": null,
+      "vector_truth_mm": 72.131,
+      "absolute_geometry_delta_mm": null,
+      "measurement_uncertainty_mm": null,
+      "reasons": [
+        "BLUR_LOW (Laplacian variance 0.3 < 38.0)"
+      ]
+    },
+    {
+      "fixture_id": "edge_clipped_synthetic",
+      "synthetic": true,
+      "path": "data\\demo\\edge_clipped_synthetic.png",
+      "sha256_match": true,
+      "expected": "OCCLUDED",
+      "actual_status": "OCCLUDED",
+      "actual_size_class": null,
+      "expectation_met": true,
+      "policy_metric_matches_fixture": true,
+      "demo_threshold_matches_fixture": true,
+      "measurement_mm": null,
+      "vector_truth_mm": null,
+      "absolute_geometry_delta_mm": null,
+      "measurement_uncertainty_mm": null,
+      "reasons": [
+        "Object silhouette touches the frame edge; physical extent cannot be inferred from the visible part."
+      ]
+    }
+  ],
+  "limitations": [
+    "No real produce, real cameras, real backgrounds, or measured specimens.",
+    "Demo thresholds are not ARL/Growize approved.",
+    "Synthetic contract pass rate must never be quoted as accuracy."
+  ]
+}

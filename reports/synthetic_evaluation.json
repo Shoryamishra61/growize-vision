@@ -4,7 +4,7 @@
   "scope": "Synthetic fixtures only. Verifies status precedence, refusal logic, threshold wiring, and known planar geometry. Not real-produce accuracy.",
   "evidence_class": "SYNTHETIC_CONTRACT_TEST_ONLY",
   "environment": {
-    "timestamp_utc": "2026-10-22T16:28:17.486480+00:00",
+    "timestamp_utc": "2026-10-22T17:56:49.392613+00:00",
     "python": "3.10.11",
     "platform": "Windows-10-10.0.26300-SP0",
     "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",

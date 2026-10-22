@@ -1,0 +1,7 @@
+$ C:\Python310\python.exe scripts/build_failure_gallery.py
+
+Failure gallery: C:\code_shit\projects\agriculture vegetables\reports\failure_gallery
+Cases: 4; contract failures: none
+
+
+exit_code=0

@@ -1,0 +1,32 @@
+{
+  "report_type": "measured_dataset_validation",
+  "manifest": "C:\\code_shit\\projects\\agriculture vegetables\\data\\dataset_manifest_template.json",
+  "status": "PASS",
+  "ok": true,
+  "manifest_version": "growize-measured-manifest-1.0",
+  "errors": [],
+  "warnings": [
+    "Dataset is intentionally empty. It is a template, not evidence, and cannot support accuracy, coverage or field-readiness claims."
+  ],
+  "counts": {
+    "specimens_total": 0,
+    "real_specimens": 0,
+    "synthetic_specimens": 0,
+    "by_crop": {},
+    "real_by_crop": {},
+    "by_grade": {},
+    "real_by_grade": {},
+    "by_source": {},
+    "by_split": {},
+    "real_by_split": {}
+  },
+  "checked_images": 0,
+  "verified_hashes": 0,
+  "leakage_groups": {},
+  "real_evaluable": false,
+  "limitations": [
+    "A passing validation is not accuracy evidence.",
+    "The template is empty until licensed, measured specimens are supplied.",
+    "Synthetic fixtures are counted separately and excluded from real metrics."
+  ]
+}

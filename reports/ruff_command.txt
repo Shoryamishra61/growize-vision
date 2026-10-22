@@ -1,0 +1,6 @@
+$ C:\Python310\python.exe -m ruff check .
+
+All checks passed!
+
+
+exit_code=0
