@@ -16,8 +16,8 @@ def identity_service():
 
 def test_identity_service_loads(identity_service):
     assert identity_service.is_classifier_available
-    assert len(identity_service.classes) == 15
-    assert len(identity_service.stats) >= 15
+    assert len(identity_service.classes) == 18
+    assert len(identity_service.stats) == 18
 
 
 def test_predict_species_on_synthetic_patch(identity_service):
