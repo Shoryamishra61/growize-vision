@@ -2,6 +2,25 @@ import os
 import sys
 from pathlib import Path
 
+# Monkey-patch gradio_client schema parsing to prevent 500 error on /info when pydantic emits boolean additionalProperties
+try:
+    import gradio_client.utils
+    _orig_get_type = gradio_client.utils.get_type
+    def _safe_get_type(schema):
+        if not isinstance(schema, dict):
+            return "Any"
+        return _orig_get_type(schema)
+    gradio_client.utils.get_type = _safe_get_type
+
+    _orig_json_schema = gradio_client.utils._json_schema_to_python_type
+    def _safe_json_schema(schema, defs):
+        if not isinstance(schema, dict):
+            return "Any"
+        return _orig_json_schema(schema, defs)
+    gradio_client.utils._json_schema_to_python_type = _safe_json_schema
+except Exception:
+    pass
+
 try:
     import spaces
 except ImportError:

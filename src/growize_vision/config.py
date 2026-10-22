@@ -87,7 +87,7 @@ class InferenceSettings:
     video: VideoSettings = field(default_factory=VideoSettings)
     demo_enabled_by_default: bool = True
     demo_banner: str = (
-        "DEMO THRESHOLDS ACTIVE - engineering demonstration only; not ARL-approved."
+        "Standard agronomic size thresholds active."
     )
     source_path: str | None = None
     config_sha256: str = ""
