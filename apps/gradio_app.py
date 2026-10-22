@@ -1263,10 +1263,10 @@ demo = build_app()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", os.environ.get("GROWIZE_PORT", "7860")))
     host = os.environ.get("GRADIO_SERVER_NAME", os.environ.get("GROWIZE_HOST", "0.0.0.0"))
-    demo.queue(default_concurrency_limit=1, max_size=16).launch(
+    demo.queue(default_concurrency_limit=2, max_size=32).launch(
         server_name=host,
         server_port=port,
-        share=False,
+        share=True,
         debug=False,
         show_error=True,
         allowed_paths=[
@@ -1275,5 +1275,5 @@ if __name__ == "__main__":
             str(DEMO_DIR),
         ],
         max_file_size=300_000_000,
-        inbrowser=False,
+        inbrowser=True,
     )
