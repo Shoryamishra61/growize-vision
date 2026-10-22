@@ -1,0 +1,74 @@
+{
+  "report_type": "real_specimen_baseline_evaluation",
+  "status": "BLOCKED",
+  "evidence_class": "REAL_MEASURED_SPECIMENS",
+  "environment": {
+    "timestamp_utc": "2026-10-22T16:28:26.788107+00:00",
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "opencv": "4.11.0",
+    "numpy": "2.2.6",
+    "growize_vision": "0.1.0",
+    "execution_device": "CPU",
+    "cuda_claimed": false
+  },
+  "manifest": {
+    "path": "data\\dataset_manifest_template.json",
+    "exists": true,
+    "sha256": "ae87d3b67c0fe4860993c07d08ae4eeeb271ff2a7314f63b0cbb01d25fc56b98"
+  },
+  "config": {
+    "policy_version": "policy-2026-10-22.1",
+    "policy_sha256": "65b92080f0cd9d8dfe8d98c90ef26b557e3898345d9d28a57f89f9c06210dec6",
+    "settings_version": "inference-2026-10-22.1",
+    "settings_sha256": "26c9c37c06c0c9adbb62634024200b5cb2d124b2cb207feda4459533dd7b5ab1"
+  },
+  "protocol": {
+    "marker_side_mm": null,
+    "expected_marker_id": 0,
+    "demo_policy": false,
+    "one_primary_image_per_specimen": true
+  },
+  "blockers": [
+    "Dataset is empty; no real measured specimens are available.",
+    "Dataset manifest validation failed."
+  ],
+  "warnings": [],
+  "skipped_crops": [],
+  "summary": null,
+  "confusion": null,
+  "status_counts": null,
+  "observations": [],
+  "limitations": [
+    "Only an empty/pending manifest template exists unless a licensed, measured dataset has been supplied.",
+    "No real threshold is approved; strict evaluation therefore cannot run.",
+    "A demo-policy run is engineering evidence, never buyer or ARL evidence."
+  ],
+  "validation": {
+    "status": "FAIL",
+    "ok": false,
+    "manifest": "C:\\code_shit\\projects\\agriculture vegetables\\data\\dataset_manifest_template.json",
+    "manifest_version": "growize-measured-manifest-1.0",
+    "errors": [
+      "Dataset is empty; no real measured specimens are available."
+    ],
+    "warnings": [],
+    "counts": {
+      "specimens_total": 0,
+      "real_specimens": 0,
+      "synthetic_specimens": 0,
+      "by_crop": {},
+      "real_by_crop": {},
+      "by_grade": {},
+      "real_by_grade": {},
+      "by_source": {},
+      "by_split": {},
+      "real_by_split": {}
+    },
+    "checked_images": 0,
+    "verified_hashes": 0,
+    "leakage_groups": {},
+    "real_evaluable": false
+  }
+}

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "growize-vision"
+version = "0.1.0"
+description = "Calibrated, safety-conscious vegetable size grading for Growize Farms / AgResearch Labs."
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+dependencies = [
+  "numpy==2.2.6",
+  "opencv-python==4.11.0.86",
+  "Pillow==10.4.0",
+  "PyYAML==6.0.3",
+  "gradio==4.36.1",
+  "huggingface-hub==0.25.2",
+  "gradio-client==1.0.1",
+  "fastapi==0.112.2",
+  "starlette==0.37.2",
+  "pydantic==2.8.2",
+  "imageio==2.37.4",
+  "imageio-ffmpeg==0.6.0",
+  "pandas==2.3.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.5", "ruff==0.9.10"]
+ml = ["torch==2.14.0+cpu", "torchvision==0.29.0+cpu"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = [
+  "slow: tests that touch the camera or long media",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501", "B008", "UP006", "UP035"]
+
+[tool.ruff.lint.per-file-ignores]
+# The app prepends src/ to sys.path before importing the local package so it can
+# run directly from a checkout. That intentional ordering triggers E402.
+"apps/gradio_app.py" = ["E402"]

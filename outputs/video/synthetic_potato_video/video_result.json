@@ -1,0 +1,148 @@
+{
+  "status": "COMPLETED",
+  "source_path": "data\\demo\\synthetic_potato_video.mp4",
+  "output_video": "outputs\\video\\synthetic_potato_video\\annotated.mp4",
+  "metadata": {
+    "fps": 10.0,
+    "frame_count": 30,
+    "width": 1400,
+    "height": 1000,
+    "duration_s": 3.0,
+    "fps_estimated": false,
+    "warnings": []
+  },
+  "sampled_frames": 6,
+  "summary": {
+    "sampled_frames": 6,
+    "source_fps": 10.0,
+    "sample_fps": 2.0,
+    "per_frame_observations": 6,
+    "accepted_per_frame_observations": 6,
+    "unique_vegetable_count": null,
+    "count_semantics": "per-frame observations; repeated frames of one object are NOT unique vegetables and no tracker-verified unique count is claimed",
+    "status_counts": {
+      "ACCEPTED": 6
+    },
+    "size_class_counts_per_frame_observation": {
+      "SMALL": 0,
+      "BIG": 6
+    }
+  },
+  "warnings": [],
+  "exports": {},
+  "processing_ms": 1730.902,
+  "codec": "h264/libx264",
+  "cancelled": false,
+  "count_semantics": "per-frame observations",
+  "unique_vegetable_count": null,
+  "frames": [
+    {
+      "frame_id": 0,
+      "timestamp_s": 0.0,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 285.137,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 64.704,
+          "uncertainty_mm": 2.545,
+          "threshold_mm": 60.0
+        }
+      ]
+    },
+    {
+      "frame_id": 5,
+      "timestamp_s": 0.5,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 154.59,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 64.867,
+          "uncertainty_mm": 2.547,
+          "threshold_mm": 60.0
+        }
+      ]
+    },
+    {
+      "frame_id": 10,
+      "timestamp_s": 1.0,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 157.133,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 64.918,
+          "uncertainty_mm": 2.547,
+          "threshold_mm": 60.0
+        }
+      ]
+    },
+    {
+      "frame_id": 15,
+      "timestamp_s": 1.5,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 154.223,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 64.835,
+          "uncertainty_mm": 2.545,
+          "threshold_mm": 60.0
+        }
+      ]
+    },
+    {
+      "frame_id": 20,
+      "timestamp_s": 2.0,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 175.222,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 65.03,
+          "uncertainty_mm": 2.544,
+          "threshold_mm": 60.0
+        }
+      ]
+    },
+    {
+      "frame_id": 25,
+      "timestamp_s": 2.5,
+      "status": "ACCEPTED",
+      "size_class": "BIG",
+      "instance_count": 1,
+      "processing_ms": 155.886,
+      "instances": [
+        {
+          "instance_id": "obj_001",
+          "status": "ACCEPTED",
+          "size_class": "BIG",
+          "measurement_mm": 64.917,
+          "uncertainty_mm": 2.544,
+          "threshold_mm": 60.0
+        }
+      ]
+    }
+  ]
+}

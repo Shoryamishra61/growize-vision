@@ -1,0 +1,232 @@
+{
+  "result_id": "insp_eb1156e7f81647",
+  "timestamp": "2026-10-22T16:31:46.769505+00:00",
+  "media": {
+    "source_type": "image",
+    "source_id": "potato_big_synthetic.png",
+    "device": "upload",
+    "captured_at": "2026-10-22T16:31:46.526419+00:00",
+    "frame_id": null,
+    "timestamp_s": null,
+    "batch_id": null,
+    "session_id": "ui"
+  },
+  "status": "ACCEPTED",
+  "size_class": "BIG",
+  "accepted": true,
+  "instances": [
+    {
+      "instance_id": "obj_001",
+      "crop_key": "potato",
+      "bbox_px": [
+        564,
+        336,
+        497,
+        408
+      ],
+      "mask_area_px": 157011.0,
+      "source": "opencv_controlled_background",
+      "tracking_id": null,
+      "visible_fraction": 1.0,
+      "quality_flags": [],
+      "decision": {
+        "size_class": "BIG",
+        "status": "ACCEPTED",
+        "reasons": [
+          "INTERVAL_ENTIRELY_AT_OR_ABOVE_THRESHOLD",
+          "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+        ],
+        "measurement": {
+          "metric": "min_area_rect_short_mm",
+          "value": 72.289,
+          "value_mm": 72.289,
+          "uncertainty_mm": 2.565,
+          "lower_mm": 69.724,
+          "upper_mm": 74.854,
+          "unit": "mm",
+          "method": "aruco_planar_homography_contour_geometry",
+          "calibration_id": "calib_aruco_0_e1d3fa17f3e3",
+          "coverage_note": "engineering_error_bound_not_statistical_95pct",
+          "secondary": {
+            "area_mm2": 5216.136,
+            "perimeter_mm": 273.795,
+            "min_area_rect_short_mm": 72.289,
+            "min_area_rect_long_mm": 92.476,
+            "max_feret_mm": 92.515,
+            "equivalent_diameter_mm": 81.495,
+            "elongation": 1.279,
+            "curvature_ratio": 1.48,
+            "local_mm_per_px": 0.182,
+            "offset_from_marker_side_ratio": 3.138,
+            "print_scale_error_mm": 0.723,
+            "corner_error_mm": 1.326,
+            "boundary_error_mm": 0.547,
+            "parallax_error_mm": 2.0
+          },
+          "warnings": [
+            "Projected-plane measurement, not weight/volume and not a 3-D surface measurement.",
+            "Parallax from object height above the marker plane is included only as a configured engineering bound, not a measured correction."
+          ]
+        },
+        "threshold_mm": 60.0,
+        "comparator": "greater_than_or_equal",
+        "policy_version": "policy-2026-10-22.1/demo",
+        "calibration_id": "calib_aruco_0_e1d3fa17f3e3",
+        "policy": {
+          "crop_key": "potato",
+          "crop_name": "Potato",
+          "physical_unit": "single_tuber",
+          "metric": "min_area_rect_short_mm",
+          "metric_description": "Projected minimum width of the tuber silhouette, in millimetres, on the calibrated marker plane.",
+          "threshold_mm": 60.0,
+          "comparator": "greater_than_or_equal",
+          "guard_band_mm": 0.5,
+          "policy_version": "policy-2026-10-22.1/demo",
+          "approval_status": "ASSESSMENT_DEMO_ONLY",
+          "source": "Engineering demonstration cut-off stored in grade_rules.yaml; not supplied or approved by ARL/Growize.",
+          "demo": true,
+          "min_visible_fraction": 0.98
+        },
+        "warning": "DEMO CUT-OFF ONLY: this is not an ARL/Growize-approved grade."
+      },
+      "measurement": {
+        "metric": "min_area_rect_short_mm",
+        "value": 72.289,
+        "value_mm": 72.289,
+        "uncertainty_mm": 2.565,
+        "lower_mm": 69.724,
+        "upper_mm": 74.854,
+        "unit": "mm",
+        "method": "aruco_planar_homography_contour_geometry",
+        "calibration_id": "calib_aruco_0_e1d3fa17f3e3",
+        "coverage_note": "engineering_error_bound_not_statistical_95pct",
+        "secondary": {
+          "area_mm2": 5216.136,
+          "perimeter_mm": 273.795,
+          "min_area_rect_short_mm": 72.289,
+          "min_area_rect_long_mm": 92.476,
+          "max_feret_mm": 92.515,
+          "equivalent_diameter_mm": 81.495,
+          "elongation": 1.279,
+          "curvature_ratio": 1.48,
+          "local_mm_per_px": 0.182,
+          "offset_from_marker_side_ratio": 3.138,
+          "print_scale_error_mm": 0.723,
+          "corner_error_mm": 1.326,
+          "boundary_error_mm": 0.547,
+          "parallax_error_mm": 2.0
+        },
+        "warnings": [
+          "Projected-plane measurement, not weight/volume and not a 3-D surface measurement.",
+          "Parallax from object height above the marker plane is included only as a configured engineering bound, not a measured correction."
+        ]
+      },
+      "contour_points": 633
+    }
+  ],
+  "instance_count": 1,
+  "calibration": {
+    "valid": true,
+    "calibration_id": "calib_aruco_0_e1d3fa17f3e3",
+    "marker_id": 0,
+    "marker_side_mm": 50.0,
+    "homography": [
+      [
+        0.18237863909551877,
+        1.566662405302638e-05,
+        -14.918573107997975
+      ],
+      [
+        1.0567596863351838e-05,
+        0.18252056739392145,
+        -13.25970135095098
+      ],
+      [
+        5.691736553394369e-07,
+        4.3436190211076215e-07,
+        1.0
+      ]
+    ],
+    "mm_per_px": 0.18248459729311545,
+    "corner_reprojection_rms_px": 1.2899563009557621e-14,
+    "marker_measurement_uncertainty_mm": 0.5,
+    "source": "printed_aruco_marker",
+    "warnings": [
+      "Planar homography assumes the measured vegetable contact footprint is coplanar with the marker. Elevated top surfaces have parallax bias."
+    ],
+    "reasons": []
+  },
+  "quality": {
+    "blur_score": 102.474,
+    "contrast": 110.0,
+    "clipped_low_fraction": 0.0,
+    "clipped_high_fraction": 0.0,
+    "glare_fraction": 0.0,
+    "object_touches_edge": false,
+    "object_area_fraction": 0.13476,
+    "passed": true,
+    "flags": [],
+    "metrics": {
+      "laplacian_variance": 102.4736,
+      "p95_minus_p05": 110.0,
+      "object_roi_pixels": 161292.0
+    }
+  },
+  "policy": {
+    "crop_key": "potato",
+    "crop_name": "Potato",
+    "physical_unit": "single_tuber",
+    "metric": "min_area_rect_short_mm",
+    "metric_description": "Projected minimum width of the tuber silhouette, in millimetres, on the calibrated marker plane.",
+    "threshold_mm": 60.0,
+    "comparator": "greater_than_or_equal",
+    "guard_band_mm": 0.5,
+    "policy_version": "policy-2026-10-22.1/demo",
+    "approval_status": "ASSESSMENT_DEMO_ONLY",
+    "source": "Engineering demonstration cut-off stored in grade_rules.yaml; not supplied or approved by ARL/Growize.",
+    "demo": true,
+    "min_visible_fraction": 0.98
+  },
+  "warnings": [
+    "Processing at 1280x914 (scale 0.914).",
+    "Planar homography assumes the measured vegetable contact footprint is coplanar with the marker. Elevated top surfaces have parallax bias.",
+    "DEMO THRESHOLDS ACTIVE - engineering demonstration only; not ARL-approved grade policy."
+  ],
+  "reasons": [
+    "INTERVAL_ENTIRELY_AT_OR_ABOVE_THRESHOLD",
+    "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"
+  ],
+  "processing_ms": 249.617,
+  "timings_ms": {
+    "preprocess_ms": 3.623,
+    "calibration_ms": 8.721,
+    "segmentation_ms": 200.028,
+    "quality_ms": 26.738,
+    "render_ms": 6.313
+  },
+  "original_shape": [
+    1000,
+    1400,
+    3
+  ],
+  "processed_shape": [
+    914,
+    1280,
+    3
+  ],
+  "software_version": "0.1.0",
+  "pipeline_version": "opencv-controlled-mat-0.1.0",
+  "model_sha": "52e1955dc93d4c33f5740410d7458fba385b2b87888d99b9be2509bfeba8b0c7",
+  "exported_paths": {
+    "annotated_image": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_annotated.png",
+    "json": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_result.json",
+    "csv": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_objects.csv"
+  },
+  "tracking_summary": null,
+  "export": {
+    "annotated_image": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_annotated.png",
+    "json": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_result.json",
+    "csv": "C:\\code_shit\\projects\\agriculture vegetables\\outputs\\ui\\insp_eb1156e7f81647\\potato_big_synthetic_objects.csv",
+    "notice": "Demo policy labels are engineering demonstrations, not ARL-approved grades."
+  }
+}

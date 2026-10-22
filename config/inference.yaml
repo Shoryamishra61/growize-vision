@@ -1,0 +1,57 @@
+# Runtime settings for the deterministic OpenCV baseline.
+# All thresholds are engineering starting points; they are not field-validated
+# ARL acceptance criteria.  They are centralised so experiments can be logged
+# and reproduced.
+version: "inference-2026-10-22.1"
+max_processing_dimension: 1280
+max_upload_bytes: 25000000
+max_image_pixels: 40000000
+min_object_area_mm2: 180.0
+min_object_area_px: 220.0
+
+calibration:
+  dictionary: DICT_4X4_50
+  expected_marker_id: 0
+  min_marker_side_px: 48.0
+  max_side_length_ratio: 1.35
+  min_marker_area_fraction: 0.00015
+  corner_uncertainty_px: 1.0
+  boundary_uncertainty_px: 1.5
+  parallax_uncertainty_mm: 2.0
+  default_marker_measurement_uncertainty_mm: 0.5
+
+segmentation:
+  color_distance_min: 15.0
+  adaptive_margin: 7.0
+  morph_kernel: 5
+  min_component_fraction: 0.0004
+  max_component_fraction: 0.72
+  max_instances: 12
+  marker_exclusion_margin_px: 10
+  use_grabcut_refinement: false
+  shadow_value_only_penalty: 0.55
+
+quality:
+  blur_min: 38.0
+  min_contrast: 16.0
+  max_clipped_low_fraction: 0.30
+  max_clipped_high_fraction: 0.12
+  max_glare_fraction: 0.06
+  min_object_area_fraction: 0.002
+  boundary_touch_px: 2
+
+video:
+  max_duration_s: 120.0
+  max_frames_to_sample: 300
+  default_sample_fps: 2.0
+  max_width: 1920
+  max_height: 1080
+  max_file_bytes: 300000000
+
+exports:
+  output_dir: outputs
+  retain_original_media: false
+
+demo:
+  enabled_by_default: true
+  banner: "DEMO THRESHOLDS ACTIVE - engineering demonstration only; not ARL-approved grade policy."

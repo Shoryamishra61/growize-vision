@@ -1,0 +1,136 @@
+{
+  "report_type": "local_demo_preflight",
+  "status": "PASS",
+  "scope": "Local demo environment only. Passing does not establish real-produce accuracy, measured-threshold validity, or field readiness.",
+  "environment": {
+    "timestamp_utc": "2026-10-22T17:52:54.222678+00:00",
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "opencv": "4.11.0",
+    "numpy": "2.2.6",
+    "growize_vision": "0.1.0",
+    "execution_device": "CPU",
+    "cuda_claimed": false,
+    "pid": 15252,
+    "ui_versions": {
+      "gradio": "4.36.1",
+      "gradio-client": "1.0.1",
+      "huggingface-hub": "0.25.2",
+      "fastapi": "0.112.2",
+      "starlette": "0.37.2",
+      "pydantic": "2.8.2",
+      "imageio-ffmpeg": "0.6.0"
+    }
+  },
+  "manifest": "data\\demo\\demo_manifest.json",
+  "checks": [
+    {
+      "name": "inference_package_import",
+      "status": "PASS",
+      "required": true,
+      "detail": "growize_vision imports and configuration loads."
+    },
+    {
+      "name": "gradio_app_file",
+      "status": "PASS",
+      "required": true,
+      "detail": "apps\\gradio_app.py"
+    },
+    {
+      "name": "ui_dependencies",
+      "status": "PASS",
+      "required": true,
+      "detail": "gradio==4.36.1, gradio-client==1.0.1, huggingface-hub==0.25.2, fastapi==0.112.2, starlette==0.37.2, pydantic==2.8.2, imageio-ffmpeg==0.6.0"
+    },
+    {
+      "name": "real_thresholds_are_null",
+      "status": "PASS",
+      "required": false,
+      "detail": "Real thresholds absent for: potato, onion, tomato, okra, cucumber, spinach, coriander"
+    },
+    {
+      "name": "policy_digest",
+      "status": "PASS",
+      "required": true,
+      "detail": "policy-2026-10-22.1 sha256=65b92080f0cd9d8d..."
+    },
+    {
+      "name": "settings_digest",
+      "status": "PASS",
+      "required": true,
+      "detail": "inference-2026-10-22.1 sha256=26c9c37c06c0c9ad..."
+    },
+    {
+      "name": "demo_assets_present",
+      "status": "PASS",
+      "required": true,
+      "detail": "9 fixtures; missing=none"
+    },
+    {
+      "name": "demo_asset_hashes",
+      "status": "PASS",
+      "required": true,
+      "detail": "mismatched=none"
+    },
+    {
+      "name": "synthetic_contract",
+      "status": "PASS",
+      "required": true,
+      "detail": "All image fixtures matched expected status/class."
+    },
+    {
+      "name": "demo_video_metadata",
+      "status": "PASS",
+      "required": true,
+      "detail": {
+        "fps": 10.0,
+        "frame_count": 30,
+        "width": 1400,
+        "height": 1000,
+        "duration_s": 3.0,
+        "fps_estimated": false,
+        "warnings": []
+      }
+    },
+    {
+      "name": "demo_video_processing",
+      "status": "PASS",
+      "required": true,
+      "detail": {
+        "sampled_frames": 6,
+        "codec": "h264/libx264",
+        "output": "outputs\\preflight\\video\\synthetic_potato_video\\annotated.mp4",
+        "unique_vegetable_count": null,
+        "count_semantics": "per-frame observations"
+      }
+    },
+    {
+      "name": "camera_capture",
+      "status": "NOT_RUN",
+      "required": false,
+      "detail": "Skipped; pass --camera to test hardware."
+    },
+    {
+      "name": "ffmpeg",
+      "status": "PASS",
+      "required": true,
+      "detail": "C:\\Python310\\lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win-x86_64-v7.1.exe"
+    }
+  ],
+  "failures": [],
+  "warnings": [
+    "Real thresholds are still absent. Demo mode is the only grading path."
+  ],
+  "real_thresholds_absent_for": [
+    "potato",
+    "onion",
+    "tomato",
+    "okra",
+    "cucumber",
+    "spinach",
+    "coriander"
+  ],
+  "camera_tested": false,
+  "full_video_tested": true
+}

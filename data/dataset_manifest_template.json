@@ -1,0 +1,47 @@
+{
+  "version": "growize-measured-manifest-1.0",
+  "template": true,
+  "template_warning": "TEMPLATE ONLY - replace every REPLACE_ME value and add licensed, measured specimens. An empty template is not accuracy evidence.",
+  "provenance": {
+    "dataset_name": "REPLACE_ME - dataset name",
+    "owner": "REPLACE_ME - data owner",
+    "collection_protocol": "REPLACE_ME - SOP/reference for capture, marker measurement and caliper protocol",
+    "license": "REPLACE_ME - license text or identifier",
+    "source": "REPLACE_ME - physical origin and custodian",
+    "contains_personal_data": false,
+    "consent": "REPLACE_ME - consent/ethics reference for images and people"
+  },
+  "specimens": [],
+  "required_specimen_fields": [
+    "specimen_id: unique stable ID",
+    "crop: configured crop key (potato, onion, tomato, okra, cucumber, spinach, coriander)",
+    "physical_unit: single_tuber | single_bulb | single_fruit | single_pod | single_leaf | standardized_bunch",
+    "measured_metric: min_area_rect_short_mm | min_area_rect_long_mm | max_feret_mm | projected_area_cm2",
+    "measurement_1_mm: positive caliper/ruler measurement",
+    "measurement_2_mm: independent repeat measurement (recommended)",
+    "reference_grade: SMALL | BIG after the approved policy is applied",
+    "synthetic: false for real produce",
+    "lot: physical lot/batch ID (used for leakage-safe grouping)",
+    "capture_session: capture session ID",
+    "source: where the specimen came from",
+    "license: image/specimen license",
+    "consent: consent or ethics reference",
+    "images: [{path, sha256, role}] with relative paths and 64-char lowercase SHA-256"
+  ],
+  "example_specimen": {
+    "specimen_id": "REPLACE_ME-0001",
+    "crop": "potato",
+    "physical_unit": "single_tuber",
+    "measured_metric": "min_area_rect_short_mm",
+    "measurement_1_mm": null,
+    "measurement_2_mm": null,
+    "reference_grade": null,
+    "synthetic": false,
+    "lot": "REPLACE_ME-LOT",
+    "capture_session": "REPLACE_ME-SESSION",
+    "source": "REPLACE_ME",
+    "license": "REPLACE_ME",
+    "consent": "REPLACE_ME",
+    "images": []
+  }
+}

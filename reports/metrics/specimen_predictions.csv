@@ -1,0 +1,1 @@
+result_id,timestamp_utc,source_type,source_id,frame_id,timestamp_s,batch_id,instance_id,tracking_id,crop_key,status,size_class,metric,value_mm,unit,uncertainty_mm,threshold_mm,comparator,guard_band_mm,policy_version,policy_is_demo,calibration_valid,marker_id,marker_side_mm,quality_pass,reason,model_sha,pipeline_sha256

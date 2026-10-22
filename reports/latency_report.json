@@ -1,0 +1,260 @@
+{
+  "report_type": "cpu_latency_benchmark",
+  "status": "MEASURED",
+  "scope": "Single-frame, already-decoded, synthetic-fixture CPU latency on one workstation. Not accuracy, camera throughput, concurrent-load, or field performance.",
+  "evidence_class": "ENGINEERING_MEASUREMENT_ONLY",
+  "environment": {
+    "timestamp_utc": "2026-10-22T16:28:54.521766+00:00",
+    "python": "3.10.11",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "processor": "AMD64 Family 23 Model 96 Stepping 1, AuthenticAMD",
+    "opencv": "4.11.0",
+    "numpy": "2.2.6",
+    "growize_vision": "0.1.0",
+    "execution_device": "CPU",
+    "cuda_claimed": false,
+    "cpu_count": 16,
+    "settings_version": "inference-2026-10-22.1",
+    "settings_sha256": "26c9c37c06c0c9adbb62634024200b5cb2d124b2cb207feda4459533dd7b5ab1",
+    "policy_version": "policy-2026-10-22.1",
+    "policy_sha256": "65b92080f0cd9d8dfe8d98c90ef26b557e3898345d9d28a57f89f9c06210dec6"
+  },
+  "protocol": {
+    "manifest": "data\\demo\\demo_manifest.json",
+    "fixtures": 8,
+    "warmup_runs_per_fixture": 2,
+    "timed_runs_per_fixture": 10,
+    "timed_observations": 80,
+    "demo_policy": true,
+    "max_processing_dimension": 1280,
+    "decode_included": false,
+    "annotation_render_included": true
+  },
+  "aggregate": {
+    "wall": {
+      "count": 80,
+      "min_ms": 107.775,
+      "mean_ms": 116.04,
+      "median_ms": 115.971,
+      "p95_ms": 124.306,
+      "max_ms": 127.933
+    },
+    "internal": {
+      "count": 80,
+      "min_ms": 107.21,
+      "mean_ms": 115.303,
+      "median_ms": 115.232,
+      "p95_ms": 123.537,
+      "max_ms": 127.21
+    },
+    "median_of_fixture_medians_ms": 116.038
+  },
+  "fixtures": [
+    {
+      "fixture_id": "potato_small_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "ACCEPTED",
+      "wall": {
+        "count": 10,
+        "min_ms": 112.65,
+        "mean_ms": 113.945,
+        "median_ms": 114.111,
+        "p95_ms": 115.028,
+        "max_ms": 115.11
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 111.952,
+        "mean_ms": 113.264,
+        "median_ms": 113.306,
+        "p95_ms": 114.46,
+        "max_ms": 114.489
+      }
+    },
+    {
+      "fixture_id": "potato_big_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "ACCEPTED",
+      "wall": {
+        "count": 10,
+        "min_ms": 119.956,
+        "mean_ms": 123.047,
+        "median_ms": 122.368,
+        "p95_ms": 127.813,
+        "max_ms": 127.933
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 119.233,
+        "mean_ms": 122.259,
+        "median_ms": 121.506,
+        "p95_ms": 127.119,
+        "max_ms": 127.21
+      }
+    },
+    {
+      "fixture_id": "okra_small_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "ACCEPTED",
+      "wall": {
+        "count": 10,
+        "min_ms": 115.851,
+        "mean_ms": 117.975,
+        "median_ms": 118.101,
+        "p95_ms": 119.805,
+        "max_ms": 119.947
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 115.125,
+        "mean_ms": 117.242,
+        "median_ms": 117.358,
+        "p95_ms": 119.027,
+        "max_ms": 119.308
+      }
+    },
+    {
+      "fixture_id": "okra_big_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "ACCEPTED",
+      "wall": {
+        "count": 10,
+        "min_ms": 117.075,
+        "mean_ms": 118.499,
+        "median_ms": 117.491,
+        "p95_ms": 122.647,
+        "max_ms": 124.764
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 116.414,
+        "mean_ms": 117.645,
+        "median_ms": 116.538,
+        "p95_ms": 121.87,
+        "max_ms": 124.009
+      }
+    },
+    {
+      "fixture_id": "no_marker_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "CALIBRATION_REQUIRED",
+      "wall": {
+        "count": 10,
+        "min_ms": 115.777,
+        "mean_ms": 118.007,
+        "median_ms": 117.139,
+        "p95_ms": 122.792,
+        "max_ms": 125.729
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 115.124,
+        "mean_ms": 117.296,
+        "median_ms": 116.537,
+        "p95_ms": 122.058,
+        "max_ms": 125.061
+      }
+    },
+    {
+      "fixture_id": "empty_mat_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "NO_OBJECT",
+      "wall": {
+        "count": 10,
+        "min_ms": 107.775,
+        "mean_ms": 109.18,
+        "median_ms": 108.823,
+        "p95_ms": 111.231,
+        "max_ms": 111.416
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 107.21,
+        "mean_ms": 108.551,
+        "median_ms": 108.218,
+        "p95_ms": 110.62,
+        "max_ms": 110.818
+      }
+    },
+    {
+      "fixture_id": "blurred_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "LOW_IMAGE_QUALITY",
+      "wall": {
+        "count": 10,
+        "min_ms": 111.463,
+        "mean_ms": 112.541,
+        "median_ms": 112.559,
+        "p95_ms": 113.618,
+        "max_ms": 113.733
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 110.832,
+        "mean_ms": 111.808,
+        "median_ms": 111.834,
+        "p95_ms": 112.91,
+        "max_ms": 113.112
+      }
+    },
+    {
+      "fixture_id": "edge_clipped_synthetic",
+      "shape_hwc": [
+        1000,
+        1400,
+        3
+      ],
+      "status": "OCCLUDED",
+      "wall": {
+        "count": 10,
+        "min_ms": 113.194,
+        "mean_ms": 115.129,
+        "median_ms": 114.937,
+        "p95_ms": 118.226,
+        "max_ms": 119.638
+      },
+      "internal": {
+        "count": 10,
+        "min_ms": 112.482,
+        "mean_ms": 114.359,
+        "median_ms": 114.138,
+        "p95_ms": 117.375,
+        "max_ms": 118.805
+      }
+    }
+  ],
+  "limitations": [
+    "Synthetic fixtures are not real produce.",
+    "One process, one machine, one image at a time; no queue or camera I/O.",
+    "Image decode is excluded; webcam capture overhead is excluded.",
+    "Results are not a service-level guarantee on other hardware."
+  ]
+}

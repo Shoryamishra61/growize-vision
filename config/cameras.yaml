@@ -1,0 +1,21 @@
+# Camera profiles are deliberately conservative.
+# The default USB webcam profile is NOT a physically validated fixed rig.
+# The marker must be present with a user-measured outer side length unless a
+# proper fixed-rig calibration is created and approved.
+version: "cameras-2026-10-22.1"
+cameras:
+  laptop_usb_cam:
+    display_name: "Laptop USB camera (unvalidated)"
+    device_hint: "USB2.0 HD UVC WebCam"
+    resolution: [640, 480]
+    marker_required: true
+    marker_side_mm_default: 50.0
+    calibration_status: "marker-required; no factory fixed-rig profile"
+    notes: "Use a flat marker beside the vegetable on the same matte plane. Measure the printed outer black square yourself."
+  upload_unknown:
+    display_name: "Uploaded image / video"
+    device_hint: "unknown"
+    marker_required: true
+    marker_side_mm_default: 50.0
+    calibration_status: "per-frame marker required"
+    notes: "A photo without a known reference is refused for metric grading."

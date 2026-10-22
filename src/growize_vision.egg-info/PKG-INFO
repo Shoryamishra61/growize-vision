@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: growize-vision
+Version: 0.1.0
+Summary: Calibrated, safety-conscious vegetable size grading for Growize Farms / AgResearch Labs.
+Requires-Python: <3.12,>=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy==2.2.6
+Requires-Dist: opencv-python==4.11.0.86
+Requires-Dist: Pillow==10.4.0
+Requires-Dist: PyYAML==6.0.3
+Requires-Dist: gradio==4.36.1
+Requires-Dist: huggingface-hub==0.25.2
+Requires-Dist: gradio-client==1.0.1
+Requires-Dist: pandas==2.3.3
+Provides-Extra: dev
+Requires-Dist: pytest==8.3.5; extra == "dev"
+Requires-Dist: ruff==0.9.10; extra == "dev"
+Provides-Extra: ml
+Requires-Dist: torch==2.14.0+cpu; extra == "ml"
+Requires-Dist: torchvision==0.29.0+cpu; extra == "ml"
