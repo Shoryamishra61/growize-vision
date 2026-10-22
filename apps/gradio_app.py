@@ -401,13 +401,17 @@ def inspect_image_ui(
                         "Object 1",
                         "UNCALIBRATED",
                         appearance_est.appearance_size_class,
-                        "2D Pixel Area",
+                        "Produce Footprint",
                         f"{appearance_est.pixel_area:.0f} px² ({appearance_est.area_ratio_to_median:.2f}× median)",
                         f"{appearance_est.ref_median_area_px:.0f} px²",
-                        f"AI Population Median ({appearance_est.species_key.title()})",
-                        f"Species: {species_pred.species_name if species_pred else appearance_est.species_key.title()} ({species_pred.confidence*100:.1f}%)" if species_pred else "Appearance estimate",
+                        f"AI Population Standard ({appearance_est.species_key.title()})",
+                        f"AI Species: {species_pred.species_name if species_pred else appearance_est.species_key.title()} (Confidence: {species_pred.confidence*100:.1f}%)" if species_pred else "Appearance estimate",
                     ]
                 ]
+                annotated = IDENTITY_SERVICE.render_appearance_overlay(
+                    decoded.bgr, appearance_est, species_name=sp_name
+                )
+                rgb = bgr_to_rgb(annotated)
 
         if summary_card is None:
             summary_card = summary_html(result)
@@ -509,13 +513,17 @@ def live_inspect_ui(
                         "Object 1",
                         "UNCALIBRATED",
                         appearance_est.appearance_size_class,
-                        "2D Pixel Area",
+                        "Produce Footprint",
                         f"{appearance_est.pixel_area:.0f} px² ({appearance_est.area_ratio_to_median:.2f}× median)",
                         f"{appearance_est.ref_median_area_px:.0f} px²",
-                        f"AI Population Median ({appearance_est.species_key.title()})",
+                        f"AI Population Standard ({appearance_est.species_key.title()})",
                         f"Species: {species_pred.species_name if species_pred else appearance_est.species_key.title()} ({species_pred.confidence*100:.1f}%)" if species_pred else "Appearance estimate",
                     ]
                 ]
+                annotated = IDENTITY_SERVICE.render_appearance_overlay(
+                    frame_bgr, appearance_est, species_name=sp_name
+                )
+                session.last_annotated_rgb = bgr_to_rgb(annotated)
 
         if summary_card is None:
             summary_card = summary_html(result, stats)

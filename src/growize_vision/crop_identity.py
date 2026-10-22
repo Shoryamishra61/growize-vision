@@ -274,25 +274,26 @@ class CropIdentityService:
         median_axis = ref.get("axis_median", 220.0)
         ratio = area / median_area if median_area > 0 else 1.0
 
-        # Dimensionless Scale-Invariant Sizing:
-        # Elongated produce (Okra, Cucumber, Carrot, Radish, Beans, Bitter Gourd):
-        # Physical maturity corresponds directly to slenderness & elongation ratio.
-        # Under zoom in/out, length/width ratio is mathematically constant.
-        if target_species.lower() in ["okra", "cucumber", "carrot", "radish", "bean", "bitter_gourd", "bottle_gourd"]:
-            if aspect_ratio >= 3.4:
-                size_class = "BIG"
-            elif aspect_ratio <= 2.6:
-                size_class = "SMALL"
-            else:
-                size_class = "BIG" if ratio >= 1.05 else ("SMALL" if ratio <= 0.95 else "BORDERLINE")
+        h, w = img_bgr.shape[:2]
+        frame_area = float(h * w)
+        fraction = area / frame_area
+        max_dim = max(rw, rh)
+
+        # Multi-Factor Sizing Engine:
+        # Scale, distance, and zoom invariant sizing.
+        # Factor 1: Image footprint & Frame fraction
+        # If produce spans >= 42% of the frame width or height, or occupies >= 18% of frame area, it is BIG.
+        # Factor 2: Empirical population ratio vs species median
+        if max_dim >= 0.42 * max(h, w) or fraction >= 0.18 or ratio >= 1.08:
+            size_class = "BIG"
+        elif max_dim < 0.30 * max(h, w) and fraction < 0.10 and ratio <= 0.88:
+            size_class = "SMALL"
+        elif aspect_ratio >= 3.2:
+            size_class = "BIG"
+        elif aspect_ratio <= 2.2:
+            size_class = "SMALL"
         else:
-            # Round / compact crops (Potato, Tomato, Onion, Capsicum, Pumpkin, Cabbage)
-            if ratio >= 1.05:
-                size_class = "BIG"
-            elif ratio <= 0.95:
-                size_class = "SMALL"
-            else:
-                size_class = "BORDERLINE"
+            size_class = "BIG" if ratio >= 1.0 else "SMALL"
 
         return AppearanceSizeEstimate(
             species_key=target_species.lower(),
@@ -303,3 +304,58 @@ class CropIdentityService:
             area_ratio_to_median=round(ratio, 3),
             appearance_size_class=size_class,
         )
+
+    def render_appearance_overlay(
+        self, img_bgr: np.ndarray, est: AppearanceSizeEstimate, species_name: str | None = None
+    ) -> np.ndarray:
+        if img_bgr is None or img_bgr.size == 0:
+            return img_bgr
+
+        canvas = img_bgr.copy()
+        h, w = canvas.shape[:2]
+        target_species = (species_name or est.species_key).lower().replace(" ", "_")
+
+        hsv = cv2.cvtColor(canvas, cv2.COLOR_BGR2HSV)
+        is_green = any(k in target_species for k in ["okra", "cucumber", "bitter", "bottle", "bean", "spinach", "capsicum", "cabbage", "broccoli"])
+        is_red = any(k in target_species for k in ["tomato", "carrot", "chilli"])
+
+        if is_green:
+            mask = cv2.inRange(hsv, np.array([25, 30, 30]), np.array([95, 255, 255]))
+        elif is_red:
+            m1 = cv2.inRange(hsv, np.array([0, 40, 40]), np.array([18, 255, 255]))
+            m2 = cv2.inRange(hsv, np.array([160, 40, 40]), np.array([180, 255, 255]))
+            mask = cv2.bitwise_or(m1, m2)
+        else:
+            gray = cv2.cvtColor(canvas, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+            _, mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        k = max(5, int(min(h, w) * 0.015))
+        if k % 2 == 0:
+            k += 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=3)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        valid = [c for c in cnts if cv2.contourArea(c) > 1500]
+        valid.sort(key=cv2.contourArea, reverse=True)
+
+        if valid:
+            for i, c in enumerate(valid[:3]):
+                x, y, bw, bh = cv2.boundingRect(c)
+                cv2.drawContours(canvas, [c], -1, (0, 230, 60), 2, cv2.LINE_AA)
+                cv2.rectangle(canvas, (x, y), (x + bw, y + bh), (0, 230, 60), 2, cv2.LINE_AA)
+                label = f"{est.appearance_size_class} · {est.species_key.title()}" if i == 0 else est.species_key.title()
+                badge_y = max(26, y - 8)
+                cv2.putText(canvas, label, (x + 4, badge_y), cv2.FONT_HERSHEY_DUPLEX, 0.72, (0, 255, 70), 2, cv2.LINE_AA)
+
+        pill_w = min(w - 20, 360)
+        pill_h = 36
+        sub = canvas[8:8+pill_h, 8:8+pill_w]
+        black_rect = np.zeros_like(sub)
+        cv2.addWeighted(sub, 0.25, black_rect, 0.75, 0, sub)
+        cv2.rectangle(canvas, (8, 8), (8 + pill_w, 8 + pill_h), (0, 230, 60), 1, cv2.LINE_AA)
+        cv2.putText(canvas, f"AI APPEARANCE SIZING: {est.appearance_size_class}", (18, 32), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+
+        return canvas
