@@ -26,6 +26,19 @@ if str(ROOT / "src") not in sys.path:
 import gradio as gr
 import numpy as np
 
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        @staticmethod
+        def GPU(fn=None, **kwargs):
+            if fn is not None:
+                return fn
+            def wrapper(f):
+                return f
+            return wrapper
+    spaces = _MockSpaces()
+
 from growize_vision.config import PROJECT_ROOT
 from growize_vision.domain import (
     InspectionResult,
@@ -229,6 +242,7 @@ def _error_summary(title: str, message: str) -> str:
     """
 
 
+@spaces.GPU
 def inspect_image_ui(
     image_path: str | None,
     crop_key: str | None,
@@ -306,6 +320,7 @@ def inspect_image_ui(
         )
 
 
+@spaces.GPU
 def live_inspect_ui(
     frame_rgb: Any,
     crop_key: str | None,
@@ -397,6 +412,7 @@ def _video_table(frame_rows: list[dict[str, Any]]) -> list[list[str]]:
     return rows
 
 
+@spaces.GPU
 def process_video_ui(
     video_path: str | None,
     crop_key: str | None,

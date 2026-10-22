@@ -2,6 +2,19 @@ import os
 import sys
 from pathlib import Path
 
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        @staticmethod
+        def GPU(fn=None, **kwargs):
+            if fn is not None:
+                return fn
+            def wrapper(f):
+                return f
+            return wrapper
+    spaces = _MockSpaces()
+
 # Ensure src is in Python path
 root_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(root_dir / "src"))
