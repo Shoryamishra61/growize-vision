@@ -193,5 +193,70 @@
     "axis_std": 76.37164612179417,
     "axis_p25": 207.5807113647461,
     "axis_p75": 236.34549713134766
+  },
+  "Amaranth_Leaves": {
+    "count": 100,
+    "area_mean": 62150.155,
+    "area_median": 65025.0,
+    "area_std": 7814.6880483788345,
+    "area_p25": 65025.0,
+    "area_p75": 65025.0,
+    "axis_mean": 250.7622624206543,
+    "axis_median": 256.0,
+    "axis_std": 14.651018620456343,
+    "axis_p25": 256.0,
+    "axis_p75": 256.0
+  },
+  "Curry_Leaves": {
+    "count": 100,
+    "area_mean": 65025.0,
+    "area_median": 65025.0,
+    "area_std": 0.0,
+    "area_p25": 65025.0,
+    "area_p75": 65025.0,
+    "axis_mean": 256.0,
+    "axis_median": 256.0,
+    "axis_std": 0.0,
+    "axis_p25": 256.0,
+    "axis_p75": 256.0
+  },
+  "Drumstick_Leaves": {
+    "count": 100,
+    "area_mean": 59745.325,
+    "area_median": 65025.0,
+    "area_std": 11137.1551893594,
+    "area_p25": 54993.75,
+    "area_p75": 65025.0,
+    "axis_mean": 259.34697158813475,
+    "axis_median": 256.0,
+    "axis_std": 90.7194695374764,
+    "axis_p25": 256.0,
+    "axis_p75": 256.0
+  },
+  "Spinach": {
+    "count": 100,
+    "area_mean": 63223.685,
+    "area_median": 65025.0,
+    "area_std": 5606.616288660658,
+    "area_p25": 65025.0,
+    "area_p75": 65025.0,
+    "axis_mean": 252.49170852661132,
+    "axis_median": 256.0,
+    "axis_std": 12.540421792419252,
+    "axis_p25": 256.0,
+    "axis_p75": 256.0
+  },
+  "Okra": {
+    "count": 1000,
+    "area_mean": 11764.9,
+    "area_median": 9379.2,
+    "area_std": 8191.6,
+    "area_p25": 5608.1,
+    "area_p75": 16398.1,
+    "axis_mean": 202.8,
+    "axis_median": 186.3,
+    "axis_std": 316.0,
+    "axis_p25": 157.3,
+    "axis_p75": 216.1
   }
 }
