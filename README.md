@@ -1,3 +1,15 @@
+---
+title: Growize Vision
+emoji: 🥦
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.36.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+
 # Growize Vision
 
 **Calibrated, refusal-first SMALL/BIG vegetable size grading for a controlled matte station.**
