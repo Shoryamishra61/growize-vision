@@ -279,21 +279,66 @@ class CropIdentityService:
         fraction = area / frame_area
         max_dim = max(rw, rh)
 
-        # Multi-Factor Sizing Engine:
-        # Scale, distance, and zoom invariant sizing.
-        # Factor 1: Image footprint & Frame fraction
-        # If produce spans >= 42% of the frame width or height, or occupies >= 18% of frame area, it is BIG.
-        # Factor 2: Empirical population ratio vs species median
-        if max_dim >= 0.42 * max(h, w) or fraction >= 0.18 or ratio >= 1.08:
-            size_class = "BIG"
-        elif max_dim < 0.30 * max(h, w) and fraction < 0.10 and ratio <= 0.88:
-            size_class = "SMALL"
-        elif aspect_ratio >= 3.2:
-            size_class = "BIG"
-        elif aspect_ratio <= 2.2:
-            size_class = "SMALL"
+        # Multi-Factor Invariant Sizing Engine (Scale, Rotation, Camera Angle & Distance Invariant)
+        elongated_crops = {
+            "okra", "cucumber", "bitter_gourd", "bottle_gourd", "bean", "carrot", "radish"
+        }
+        bulbous_compact_crops = {
+            "potato", "tomato", "onion", "capsicum", "brinjal"
+        }
+        massive_head_crops = {
+            "cabbage", "cauliflower", "broccoli", "pumpkin", "papaya"
+        }
+        leafy_crops = {"spinach"}
+
+        sp_key = target_species.lower().replace(" ", "_")
+        ecd = 2.0 * np.sqrt(area / np.pi)
+        ecd_fraction = ecd / min(h, w)
+        span_fraction = max_dim / max(h, w)
+        thickness_fraction = minor_axis / min(h, w)
+
+        if sp_key in elongated_crops:
+            # For elongated produce (Okra, Cucumber, Carrot, Radish, Bitter/Bottle Gourd, Beans):
+            # A full-grown specimen or cluster occupies significant frame span or area.
+            if span_fraction >= 0.35 or fraction >= 0.14 or (aspect_ratio >= 3.0 and span_fraction >= 0.28):
+                size_class = "BIG"
+            elif span_fraction < 0.25 and fraction < 0.07:
+                size_class = "SMALL"
+            else:
+                size_class = "BIG" if span_fraction >= 0.30 else "SMALL"
+
+        elif sp_key in massive_head_crops:
+            # Massive head produce (Cabbage, Cauliflower, Broccoli, Pumpkin, Papaya):
+            if fraction >= 0.12 or span_fraction >= 0.30 or ecd_fraction >= 0.35:
+                size_class = "BIG"
+            elif fraction < 0.06:
+                size_class = "SMALL"
+            else:
+                size_class = "BIG"
+
+        elif sp_key in bulbous_compact_crops:
+            # Spherical & bulbous produce (Potato, Tomato, Onion, Capsicum, Brinjal):
+            if fraction >= 0.11 or span_fraction >= 0.32 or ecd_fraction >= 0.36:
+                size_class = "BIG"
+            elif fraction < 0.07 and span_fraction < 0.24:
+                size_class = "SMALL"
+            else:
+                size_class = "BIG" if fraction >= 0.09 else "SMALL"
+
+        elif sp_key in leafy_crops:
+            # Leafy bunches (Spinach):
+            if fraction >= 0.14 or span_fraction >= 0.35:
+                size_class = "BIG"
+            else:
+                size_class = "SMALL" if fraction < 0.08 else "BIG"
+
         else:
-            size_class = "BIG" if ratio >= 1.0 else "SMALL"
+            if fraction >= 0.12 or span_fraction >= 0.32:
+                size_class = "BIG"
+            elif fraction < 0.07:
+                size_class = "SMALL"
+            else:
+                size_class = "BIG"
 
         return AppearanceSizeEstimate(
             species_key=target_species.lower(),

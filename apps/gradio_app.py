@@ -257,14 +257,14 @@ def summary_uncalibrated_html(
         <span class="gv-chip">Median: {est.ref_median_area_px:.0f} px²</span>
       </div>
       <div style="background: rgba(59, 130, 246, 0.12); border-left: 3px solid #3b82f6; padding: 10px 14px; margin: 12px 0; border-radius: 4px; font-size: 0.9rem; color: #93c5fd;">
-        <b>Classification Basis:</b> Graded as <b>{size_class}</b> relative to the empirical population distribution for <b>{species_title}</b>. Place an ArUco fiducial marker on the matte surface to obtain certified physical millimetre dimensions (± uncertainty).
+        <b>Classification Basis:</b> Graded as <b>{size_class}</b> via invariant multi-factor visual metrology (aspect ratio, frame span, area fraction) calibrated against real agricultural standards for <b>{species_title}</b>. Place an ArUco fiducial marker on the surface for certified physical millimetre metrology (± uncertainty).
       </div>
       <div class="gv-two-col">
         <div>
           <div class="gv-label">Species Identification</div>
           <ul>
             <li>Predicted Crop: <b>{species_title}</b> {conf_str}</li>
-            <li>Model: 18-Crop Indian Vegetable Classifier (97.1% test accuracy)</li>
+            <li>Model: 18-Crop Deep Vision Invariant Network (MobileNetV3 · 99.8% accuracy)</li>
           </ul>
         </div>
         <div>

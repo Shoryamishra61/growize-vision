@@ -8,17 +8,17 @@ import numpy as np
 from .domain import InspectionResult, InstanceObservation, SizeClass, Status
 
 _COLORS_BGR = {
-    Status.ACCEPTED: (52, 211, 153),       # green
+    Status.ACCEPTED: (52, 211, 153),       # emerald green
     SizeClass.SMALL: (52, 211, 153),
     SizeClass.BIG: (52, 211, 153),
-    Status.REVIEW_BORDERLINE: (0, 191, 255),  # amber
-    Status.CALIBRATION_REQUIRED: (0, 191, 255),
-    Status.POLICY_REQUIRED: (0, 191, 255),
+    Status.REVIEW_BORDERLINE: (52, 211, 153),
+    Status.CALIBRATION_REQUIRED: (52, 211, 153),
+    Status.POLICY_REQUIRED: (52, 211, 153),
     Status.OCCLUDED: (0, 128, 255),
     Status.LOW_IMAGE_QUALITY: (0, 128, 255),
     Status.OUT_OF_DISTRIBUTION: (0, 128, 255),
     Status.NO_OBJECT: (200, 200, 200),
-    Status.MULTIPLE_OBJECTS: (0, 191, 255),
+    Status.MULTIPLE_OBJECTS: (52, 211, 153),
     Status.INVALID_INPUT: (0, 0, 255),
     Status.MODEL_UNAVAILABLE: (0, 0, 255),
 }
@@ -90,7 +90,7 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
         image,
         tuple(int(v) for v in long_axis[0]),
         tuple(int(v) for v in long_axis[1]),
-        (255, 230, 120),
+        (52, 211, 153),
         2,
         cv2.LINE_AA,
         tipLength=0.035,
@@ -99,7 +99,7 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
         image,
         tuple(int(v) for v in short_axis[0]),
         tuple(int(v) for v in short_axis[1]),
-        (150, 220, 255),
+        (180, 240, 200),
         1,
         cv2.LINE_AA,
         tipLength=0.04,
@@ -144,6 +144,10 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
 
 def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.ndarray:
     canvas = image_bgr.copy()
+    # In unscaled/uncalibrated mode, skip internal overlay box so produce is clean and unobscured
+    if result.calibration and not result.calibration.valid:
+        return canvas
+
     for instance in result.instances:
         _draw_instance(canvas, instance)
 

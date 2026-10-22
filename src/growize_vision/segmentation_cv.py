@@ -137,14 +137,23 @@ def segment_foreground(
     background_lab, _border_pixels, busy, p95 = _background_model(
         lab, marker, settings
     )
-    delta = lab - background_lab.reshape(1, 1, 3)
-    distance = np.sqrt(np.sum(delta * delta, axis=2))
-
     threshold = max(settings.color_distance_min, p95 + settings.adaptive_margin)
-    candidate = (distance > threshold).astype(np.uint8) * 255
-    candidate = _shadow_suppression(
-        lab, background_lab, candidate > 0, settings.shadow_value_only_penalty
-    ).astype(np.uint8) * 255
+    if marker is None or busy:
+        # In-the-wild produce segmentation:
+        # Use chromatic energy & saturation so real produce is detected cleanly
+        # across variable table, wood, cutting board, and ambient backgrounds.
+        hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+        sat = hsv[:, :, 1]
+        chroma = np.sqrt((lab[:, :, 1] - 128.0) ** 2 + (lab[:, :, 2] - 128.0) ** 2)
+        energy = np.clip(0.5 * sat + 0.5 * chroma, 0, 255).astype(np.uint8)
+        _, candidate = cv2.threshold(energy, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    else:
+        delta = lab - background_lab.reshape(1, 1, 3)
+        distance = np.sqrt(np.sum(delta * delta, axis=2))
+        candidate = (distance > threshold).astype(np.uint8) * 255
+        candidate = _shadow_suppression(
+            lab, background_lab, candidate > 0, settings.shadow_value_only_penalty
+        ).astype(np.uint8) * 255
 
     if marker is not None:
         excluded = marker_mask(
@@ -167,14 +176,15 @@ def segment_foreground(
     holes = cv2.bitwise_not(flood)
     filled = cv2.bitwise_or(candidate, holes)
 
+    min_component_ratio = 0.015 if (marker is None or busy) else float(settings.min_component_fraction)
     min_area = max(
-        float(settings.min_component_fraction) * image_bgr.shape[0] * image_bgr.shape[1],
+        min_component_ratio * image_bgr.shape[0] * image_bgr.shape[1],
         float(min_area_px),
     )
     if calibration and calibration.valid and calibration.mm_per_px:
         mm2_to_px = 1.0 / max(calibration.mm_per_px**2, 1e-9)
         min_area = max(
-            float(settings.min_component_fraction) * image_bgr.shape[0] * image_bgr.shape[1],
+            min_component_ratio * image_bgr.shape[0] * image_bgr.shape[1],
             float(min_area_px),
             float(min_area_mm2) * mm2_to_px,
         )
