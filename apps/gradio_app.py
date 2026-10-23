@@ -47,6 +47,7 @@ except Exception:
 import gradio as gr
 import numpy as np
 
+from growize_vision.config import PROJECT_ROOT
 from growize_vision.crop_identity import CropIdentityService, SpeciesPrediction, AppearanceSizeEstimate
 from growize_vision.domain import (
     InspectionResult,
