@@ -1488,13 +1488,13 @@ def build_app() -> gr.Blocks:
 demo = build_app()
 
 
-if __name__ == "__main__":
+def launch_app():
     port = int(os.environ.get("PORT", os.environ.get("GROWIZE_PORT", "7860")))
     host = os.environ.get("GRADIO_SERVER_NAME", os.environ.get("GROWIZE_HOST", "0.0.0.0"))
     demo.queue(default_concurrency_limit=2, max_size=32).launch(
         server_name=host,
         server_port=port,
-        share=True,
+        share=False,
         debug=False,
         show_error=True,
         allowed_paths=[
@@ -1503,5 +1503,9 @@ if __name__ == "__main__":
             str(DEMO_DIR),
         ],
         max_file_size=300_000_000,
-        inbrowser=True,
+        inbrowser=False,
     )
+
+
+if __name__ == "__main__":
+    launch_app()
