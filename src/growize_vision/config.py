@@ -85,9 +85,9 @@ class InferenceSettings:
     segmentation: SegmentationSettings = field(default_factory=SegmentationSettings)
     quality: QualitySettings = field(default_factory=QualitySettings)
     video: VideoSettings = field(default_factory=VideoSettings)
-    demo_enabled_by_default: bool = True
+    demo_enabled_by_default: bool = False
     demo_banner: str = (
-        "Standard agronomic size thresholds active."
+        "Demonstration cutoffs only; no ARL-approved thresholds supplied."
     )
     source_path: str | None = None
     config_sha256: str = ""
@@ -335,7 +335,7 @@ def load_inference_settings(
             max_height=int(vid.get("max_height", 1080)),
             max_file_bytes=int(vid.get("max_file_bytes", 300_000_000)),
         ),
-        demo_enabled_by_default=bool(demo.get("enabled_by_default", True)),
+        demo_enabled_by_default=bool(demo.get("enabled_by_default", False)),
         demo_banner=str(
             demo.get(
                 "banner",

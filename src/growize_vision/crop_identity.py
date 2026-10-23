@@ -1,19 +1,17 @@
-"""Crop species identification and population average-size estimation layer.
+"""Optional crop identity and explicitly uncalibrated image-space sizing.
 
-This module provides the secondary/enhancement layer for the Growize Vision system:
-1. Automatic crop species classification (trained on 15 vegetable classes from Kaggle)
-2. Average population size reference & visual appearance grading
-3. Metrology cross-validation against physical ground truth
+Physical metrology belongs to the calibrated inference engine. These appearance
+comparisons cannot establish millimeters, physical size, or biological provenance.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import cv2
 import numpy as np
@@ -23,7 +21,7 @@ from growize_vision.evidence import PROJECT_ROOT
 logger = logging.getLogger(__name__)
 
 DEFAULT_CLASSIFIER_PATH = PROJECT_ROOT / "config" / "models" / "vegetable_species_classifier.pkl"
-DEFAULT_DEEP_CLASSIFIER_PATH = PROJECT_ROOT / "config" / "models" / "deep_vegetable_classifier.pkl"
+DEFAULT_DEEP_CLASSIFIER_PATH = PROJECT_ROOT / "config" / "models" / "species_classifier_v3.pkl"
 DEFAULT_STATS_PATH = PROJECT_ROOT / "config" / "vegetable_population_statistics.json"
 
 
@@ -44,7 +42,7 @@ class AppearanceSizeEstimate:
     ref_median_axis_px: float
     area_ratio_to_median: float
     appearance_size_class: str  # "SMALL", "BIG", "BORDERLINE"
-    disclaimer: str = "UNCALIBRATED_APPEARANCE_ESTIMATE: Derived from 2D pixel area vs population median without fiducial scale."
+    disclaimer: str = "UNCALIBRATED_APPEARANCE_ESTIMATE: Normalized 224-pixel footprint versus training-image median. Framing, zoom and distance change this estimate; no physical size or agricultural standard is inferred."
 
 
 class CropIdentityService:
@@ -55,6 +53,7 @@ class CropIdentityService:
         deep_classifier_path: Path | str | None = None,
     ):
         self.classifier_path = Path(classifier_path or DEFAULT_CLASSIFIER_PATH)
+        self.allow_classic_fallback = classifier_path is not None
         self.deep_classifier_path = Path(deep_classifier_path or DEFAULT_DEEP_CLASSIFIER_PATH)
         self.stats_path = Path(stats_path or DEFAULT_STATS_PATH)
         self.model = None
@@ -76,22 +75,37 @@ class CropIdentityService:
                 import torchvision.transforms as T
                 with open(self.deep_classifier_path, "rb") as f:
                     deep_data = pickle.load(f)
-                self.deep_model = deep_data.get("classifier")
-                self.classes = deep_data.get("classes", [])
-                self.backbone = timm.create_model("mobilenetv3_large_100", pretrained=True, num_classes=0)
+                self.deep_model = deep_data["classifier"]
+                self.model_manifest_sha256 = deep_data.get("manifest_sha256")
+                self.classes = [str(label) for label in self.deep_model.classes_]
+                if self.classes != [str(label) for label in deep_data["classes"]]:
+                    raise ValueError("Classifier probability columns do not match artifact classes")
+                self.confidence_floor = float(deep_data.get("confidence_floor", 0.65))
+                if not 0 < self.confidence_floor <= 1:
+                    raise ValueError("Invalid confidence threshold")
+                if "backbone_file" in deep_data:
+                    backbone_path = (self.deep_classifier_path.parent / deep_data["backbone_file"]).resolve()
+                    if backbone_path.parent != self.deep_classifier_path.parent.resolve():
+                        raise ValueError("Backbone path must be beside the classifier")
+                    if hashlib.sha256(backbone_path.read_bytes()).hexdigest() != deep_data["backbone_sha256"]:
+                        raise ValueError("Backbone checksum mismatch")
+                    self.backbone = timm.create_model(deep_data["backbone_name"], pretrained=False, num_classes=0)
+                    self.backbone.load_state_dict(torch.load(backbone_path, map_location="cpu", weights_only=True))
+                else:
+                    self.backbone = timm.create_model(deep_data["backbone_name"], pretrained=True, num_classes=0)
                 self.backbone.eval()
                 self.deep_transform = T.Compose([
-                    T.Resize((224, 224)),
+                    T.Lambda(self._resize_species_image) if deep_data.get("format_version") == 2 else T.Resize((224, 224)),
                     T.ToTensor(),
                     T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ])
                 self.is_deep = True
-                logger.info("Deep Vision Vegetable Classifier (MobileNetV3 - 99.8% accuracy) loaded successfully.")
+                logger.info("Loaded species classifier with %d classes", len(self.classes))
             except Exception as e:
                 logger.warning(f"Could not load deep vision classifier: {e}")
 
         # Fallback to standard classifier if deep model not available
-        if not self.is_deep and self.classifier_path.exists():
+        if not self.is_deep and self.allow_classic_fallback and self.classifier_path.exists():
             try:
                 with open(self.classifier_path, "rb") as f:
                     data = pickle.load(f)
@@ -103,7 +117,7 @@ class CropIdentityService:
 
         if self.stats_path.exists():
             try:
-                with open(self.stats_path, "r", encoding="utf-8") as f:
+                with open(self.stats_path, encoding="utf-8") as f:
                     self.stats = json.load(f)
             except Exception as e:
                 logger.warning(f"Could not load population statistics from {self.stats_path}: {e}")
@@ -113,18 +127,24 @@ class CropIdentityService:
         return self.is_deep or (self.model is not None)
 
     @staticmethod
-    def detect_produce_presence(img_bgr: np.ndarray) -> tuple[bool, str]:
-        """Verify whether an actual vegetable/produce item is physically present.
+    def _resize_species_image(image):
+        from PIL import Image
 
-        Prevents hallucinating produce on blank walls, empty tables, ambient lighting,
-        paper documents, handwriting, text, or hands without vegetables.
-        """
+        return Image.fromarray(cv2.resize(np.asarray(image), (224, 224), interpolation=cv2.INTER_AREA))
+
+    @staticmethod
+    def detect_produce_presence(img_bgr: np.ndarray) -> tuple[bool, str]:
+        """Screen obvious blank/stroke inputs; passing does not prove produce presence."""
         if img_bgr is None or img_bgr.size == 0:
             return False, "EMPTY_FRAME"
 
         h, w = img_bgr.shape[:2]
         if h < 20 or w < 20:
             return False, "FRAME_TOO_SMALL"
+        if max(h, w) > 960:
+            scale = 960 / max(h, w)
+            img_bgr = cv2.resize(img_bgr, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+            h, w = img_bgr.shape[:2]
 
         gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
         hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
@@ -143,8 +163,8 @@ class CropIdentityService:
         chroma = np.sqrt((lab[:, :, 1].astype(float) - 128.0) ** 2 + (lab[:, :, 2].astype(float) - 128.0) ** 2)
         chroma_p95 = float(np.percentile(chroma, 95))
 
-        # Empty scene check: pure monochrome / low-contrast ambient background
-        if std_gray < 8.0 and sat_p95 < 25.0 and chroma_p95 < 12.0:
+        # A uniformly colored surface is not evidence of a produce instance.
+        if std_gray < 8.0 and float(np.max(np.std(img_bgr, axis=(0, 1)))) < 8.0:
             return False, "EMPTY_UNIFORM_SCENE"
 
         # Edge-Case Gate 1: Non-Produce / Document / Text / Signature Filter
@@ -164,8 +184,10 @@ class CropIdentityService:
 
             c = max(cnts, key=cv2.contourArea)
             area = float(cv2.contourArea(c))
-            x, y, bw, bh = cv2.boundingRect(c)
-            fill_ratio = area / float(bw * bh) if bw * bh > 0 else 0.0
+            rect_width, rect_height = cv2.minAreaRect(c)[1]
+            rect_area = float(rect_width * rect_height)
+            # Axis-aligned fill falls sharply when a slender pod is rotated.
+            fill_ratio = area / rect_area if rect_area > 0 else 0.0
 
             hull = cv2.convexHull(c)
             hull_area = float(cv2.contourArea(hull))
@@ -176,11 +198,14 @@ class CropIdentityService:
                 return False, f"NON_PRODUCE_DOCUMENT_OR_TEXT (fill={fill_ratio:.2f}, solidity={solidity:.2f})"
 
             # Rejection rule B: Artificial blue/cyan ballpoint ink
-            b_ch = img_bgr[:, :, 0]
-            r_ch = img_bgr[:, :, 2]
-            fg_idx = ink_mask > 0
+            b_ch = img_bgr[:, :, 0].astype(np.int16)
+            r_ch = img_bgr[:, :, 2].astype(np.int16)
+            # Text elsewhere in the frame must not veto the primary object.
+            primary_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.drawContours(primary_mask, [c], -1, 1, cv2.FILLED)
+            fg_idx = (primary_mask > 0) & (ink_mask > 0)
             blue_ink = (b_ch > r_ch + 10) & (h_ch >= 95) & (h_ch <= 140) & fg_idx
-            blue_ratio = float(np.sum(blue_ink)) / float(total_fg)
+            blue_ratio = float(np.sum(blue_ink)) / float(max(1, np.sum(fg_idx)))
             if blue_ratio >= 0.15:
                 return False, f"NON_PRODUCE_BLUE_INK (blue_ratio={blue_ratio:.2f})"
 
@@ -192,58 +217,13 @@ class CropIdentityService:
             total_pixels = float(h * w)
             large_cnts = [c for c in cnts if cv2.contourArea(c) >= 0.015 * total_pixels]
             if large_cnts:
-                return True, "PRODUCE_OBJECT_PRESENT"
+                return True, "FOREGROUND_CANDIDATE"
 
         # If high chromatic saturation exists (e.g. green okra, red tomato, orange carrot):
         if sat_p95 >= 30.0 or chroma_p95 >= 15.0:
-            return True, "CHROMATIC_PRODUCE_PRESENT"
+            return True, "CHROMATIC_CANDIDATE"
 
         return False, "NO_PRODUCE_DETECTED"
-
-    @staticmethod
-    def verify_species_biology(img_bgr: np.ndarray, species_name: str) -> tuple[bool, str]:
-        """Verify that the predicted crop species matches physical/biological pigmentation."""
-        if img_bgr is None or img_bgr.size == 0:
-            return False, "EMPTY_IMAGE"
-
-        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-        h = hsv[:, :, 0]
-        s = hsv[:, :, 1]
-        v = hsv[:, :, 2]
-        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-
-        # Foreground mask excluding extreme white or black margins
-        fg_mask = (gray < 235) & (gray > 20)
-        total_fg = int(np.sum(fg_mask))
-        if total_fg < 100:
-            return False, "FOREGROUND_EMPTY"
-
-        sp = species_name.lower().replace(" ", "_")
-        green_mask = (h >= 25) & (h <= 90) & (s >= 25) & (v >= 25) & fg_mask
-        green_ratio = float(np.sum(green_mask)) / float(total_fg)
-
-        red_orange_mask = (((h <= 22) | (h >= 165)) & (s >= 35) & (v >= 35)) & fg_mask
-        red_orange_ratio = float(np.sum(red_orange_mask)) / float(total_fg)
-
-        purple_mask = ((h >= 120) & (h <= 165) & (s >= 25) & (v >= 20)) & fg_mask
-        purple_ratio = float(np.sum(purple_mask)) / float(total_fg)
-
-        strictly_green = {
-            "okra", "cucumber", "bitter_gourd", "bottle_gourd", "bean", "spinach", "broccoli"
-        }
-        if sp in strictly_green and green_ratio < 0.10:
-            return False, f"BIOLOGICAL_MISMATCH: {species_name} requires >=10% green pigment, found {green_ratio*100:.1f}%"
-
-        if sp == "carrot" and red_orange_ratio < 0.10:
-            return False, f"BIOLOGICAL_MISMATCH: Carrot requires >=10% orange/red pigment, found {red_orange_ratio*100:.1f}%"
-
-        if sp == "tomato" and red_orange_ratio < 0.08 and green_ratio < 0.08:
-            return False, f"BIOLOGICAL_MISMATCH: Tomato requires >=8% red/orange/green pigment"
-
-        if sp == "brinjal" and purple_ratio < 0.06 and green_ratio < 0.08:
-            return False, f"BIOLOGICAL_MISMATCH: Brinjal requires purple or green pigment"
-
-        return True, "BIOLOGICALLY_VALID"
 
     def extract_features(self, img_bgr: np.ndarray) -> np.ndarray | None:
         if img_bgr is None or img_bgr.size == 0:
@@ -284,326 +264,140 @@ class CropIdentityService:
         return np.concatenate([h_hist, s_hist, v_hist, means, stds, [area_ratio, aspect, solidity]])
 
     def predict_species(self, img_bgr: np.ndarray) -> SpeciesPrediction | None:
-        if img_bgr is None or img_bgr.size == 0 or not self.is_classifier_available:
-            return None
+        """Return a supported model prediction, or abstain when it is unavailable.
 
-        # Anti-Hallucination Gate: Verify produce is physically present in scene
+        Confidence is the classifier score, not a guarantee of correctness or
+        proof that an object is produce. Geometry must never rewrite that score.
+        """
+        if (
+            not isinstance(img_bgr, np.ndarray)
+            or img_bgr.dtype != np.uint8
+            or img_bgr.ndim != 3
+            or img_bgr.shape[2] != 3
+            or img_bgr.size == 0
+            or not self.is_classifier_available
+        ):
+            return None
         is_present, _ = self.detect_produce_presence(img_bgr)
         if not is_present:
             return None
 
-        # Preferred: Deep Vision Model (MobileNetV3 1280-dim embeddings - 99.82% benchmark accuracy)
-        if self.is_deep and self.deep_model is not None and self.backbone is not None:
-            try:
+        try:
+            if self.is_deep:
+                if self.deep_model is None or self.backbone is None:
+                    return None
                 import torch
                 from PIL import Image
-                img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                pil_img = Image.fromarray(img_rgb)
-                tensor = self.deep_transform(pil_img).unsqueeze(0)
-                with torch.no_grad():
-                    feat = self.backbone(tensor).cpu().numpy()
-                probs = self.deep_model.predict_proba(feat)[0]
-                best_idx = int(np.argmax(probs))
-                best_class = self.classes[best_idx]
-                best_prob = float(probs[best_idx])
 
-                # Confidence Floor Gate: Reject ambiguous predictions (< 0.65)
-                CONFIDENCE_FLOOR = 0.65
-                if best_prob < CONFIDENCE_FLOOR:
-                    logger.info(f"Species prediction {best_class} rejected: confidence {best_prob:.3f} below floor {CONFIDENCE_FLOOR}")
+                image = Image.fromarray(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
+                tensor = self.deep_transform(image).unsqueeze(0)
+                with torch.inference_mode():
+                    features = self.backbone(tensor).cpu().numpy()
+                probabilities = self.deep_model.predict_proba(features)[0]
+            else:
+                if self.model is None:
                     return None
-
-                # Biological Pigmentation Gate: Verify physical color matches species biology
-                is_bio_valid, bio_reason = self.verify_species_biology(img_bgr, best_class)
-                if not is_bio_valid:
-                    logger.info(f"Species prediction {best_class} rejected: {bio_reason}")
+                features = self.extract_features(img_bgr)
+                if features is None:
                     return None
-
-                prob_dict = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
-
-                # Morphological disambiguation between Bean and Okra
-                if best_class == "Bean" and prob_dict.get("Okra", 0.0) >= 0.02:
-                    try:
-                        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-                        h_ch, s_ch, v_ch = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
-                        calyx_mask = (h_ch >= 18) & (h_ch <= 45) & (s_ch >= 25) & (s_ch <= 150) & (v_ch >= 130)
-                        green_mask = (h_ch >= 25) & (h_ch <= 90) & (s_ch >= 25) & (v_ch >= 25)
-                        calyx_px = int(np.sum(calyx_mask))
-                        pod_px = int(np.sum(green_mask)) + calyx_px
-                        calyx_ratio = calyx_px / float(pod_px + 1e-5)
-
-                        cnts, _ = cv2.findContours((green_mask | calyx_mask).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                        if cnts:
-                            c = max(cnts, key=cv2.contourArea)
-                            rect = cv2.minAreaRect(c)
-                            minor_axis = min(rect[1])
-                            if minor_axis >= 35.0 and (calyx_ratio >= 0.04 or minor_axis >= 50.0):
-                                best_class = "Okra"
-                                best_prob = max(best_prob, 0.985)
-                                prob_dict["Okra"] = best_prob
-                    except Exception as e:
-                        logger.debug(f"Morphological bean/okra check: {e}")
-
-                return SpeciesPrediction(
-                    species_key=best_class.lower().replace("_", ""),
-                    species_name=best_class.replace("_", " "),
-                    confidence=round(best_prob, 4),
-                    all_probabilities=prob_dict,
-                )
-            except Exception as exc:
-                logger.warning(f"Deep prediction failed, using fallback: {exc}")
-
-        # Fallback: Color/Moments model
-        feat = self.extract_features(img_bgr)
-        if feat is None:
-            return None
-        probs = self.model.predict_proba([feat])[0]
-        best_idx = int(np.argmax(probs))
-        best_class = self.classes[best_idx]
-        best_prob = float(probs[best_idx])
-
-        # Confidence Floor Gate
-        if best_prob < 0.65:
+                probabilities = self.model.predict_proba([features])[0]
+            return self._prediction_from_probabilities(probabilities)
+        except Exception:
+            # A broken optional provider must leave calibrated/manual inspection usable.
+            logger.exception("Species inference failed; withholding automatic crop selection")
             return None
 
-        # Biological validation
-        is_bio_valid, _ = self.verify_species_biology(img_bgr, best_class)
-        if not is_bio_valid:
+    def _prediction_from_probabilities(self, probabilities: np.ndarray) -> SpeciesPrediction | None:
+        probabilities = np.asarray(probabilities, dtype=float)
+        if (
+            probabilities.shape != (len(self.classes),)
+            or not np.all(np.isfinite(probabilities))
+            or np.any(probabilities < 0)
+            or np.any(probabilities > 1)
+            or not np.isclose(probabilities.sum(), 1.0, atol=1e-5)
+        ):
+            logger.warning("Species provider returned invalid probabilities")
             return None
-
-        # Morphological sanity check for green elongated crops
-        if best_class == "Capsicum":
-            try:
-                hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-                mask = cv2.inRange(hsv, np.array([25, 40, 40]), np.array([85, 255, 255]))
-                cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                large_cnts = [c for c in cnts if cv2.contourArea(c) > 400]
-                if large_cnts:
-                    aspects = [
-                        max(cv2.minAreaRect(c)[1]) / (min(cv2.minAreaRect(c)[1]) + 1e-5)
-                        for c in large_cnts
-                    ]
-                    if max(aspects) >= 1.75:
-                        best_class = "Okra"
-                        best_prob = 0.965
-            except Exception:
-                pass
-
-        prob_dict = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
-        if best_class == "Okra":
-            prob_dict["Okra"] = best_prob
+        index = int(np.argmax(probabilities))
+        confidence = float(probabilities[index])
+        if confidence < getattr(self, "confidence_floor", 0.65):
+            return None
+        species = str(self.classes[index])
+        if species == "Unknown":
+            return None
         return SpeciesPrediction(
-            species_key=best_class.lower().replace("_", ""),
-            species_name=best_class.replace("_", " "),
-            confidence=round(best_prob, 4),
-            all_probabilities=prob_dict,
+            species_key=species.lower(),
+            species_name=species.replace("_", " "),
+            confidence=confidence,
+            all_probabilities={str(label): float(probabilities[i])
+                               for i, label in enumerate(self.classes)},
         )
+
+    @staticmethod
+    def appearance_contour(img_bgr: np.ndarray) -> np.ndarray | None:
+        """Extract one complete silhouette in a fixed 224-pixel reference frame."""
+        from .config import SegmentationSettings
+        from .segmentation_cv import segment_foreground
+
+        if img_bgr is None or img_bgr.size == 0:
+            return None
+        normalized = cv2.resize(img_bgr, (224, 224), interpolation=cv2.INTER_AREA)
+        segmentation = segment_foreground(
+            normalized, None, None, SegmentationSettings(),
+            min_area_mm2=0.0, min_area_px=350.0,
+        )
+        if segmentation.background_busy or len(segmentation.objects) != 1:
+            return None
+        obj = segmentation.objects[0]
+        if obj.touches_edge or "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags:
+            return None
+        return obj.contour_px
 
     def estimate_appearance_size(
         self, img_bgr: np.ndarray, species_name: str | None = None
     ) -> AppearanceSizeEstimate | None:
         if img_bgr is None or img_bgr.size == 0:
             return None
-
-        # Anti-Hallucination Gate: Verify produce is physically present
-        is_present, _ = self.detect_produce_presence(img_bgr)
-        if not is_present:
+        if not self.detect_produce_presence(img_bgr)[0]:
             return None
-
-        # Resolve species name
-        target_species = None
-        if species_name:
-            norm_name = species_name.strip().title().replace(" ", "_")
-            if norm_name in self.stats or norm_name in self.classes:
-                target_species = norm_name
-
-        if not target_species and self.is_classifier_available:
-            pred = self.predict_species(img_bgr)
-            if pred and pred.confidence >= 0.65:
-                norm_name = pred.species_name.replace(" ", "_")
-                target_species = norm_name
-
-        if not target_species:
+        if species_name is None:
+            prediction = self.predict_species(img_bgr)
+            species_name = prediction.species_name if prediction else None
+        if not species_name:
             return None
-
-        # Biological validation: verify pigmentation matches species
-        is_bio_valid, _ = self.verify_species_biology(img_bgr, target_species)
-        if not is_bio_valid:
+        target = species_name.strip().title().replace(" ", "_")
+        reference = self.stats.get(target, {})
+        # Legacy statistics mix image resolutions and cannot support a comparison.
+        if reference.get("reference_size_px") != 224 or reference.get("method") != "controlled_background_v2":
             return None
-
-        # Segmentation & Contour Analysis
-        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-        is_green = target_species.lower() in [
-            "okra", "cucumber", "bitter_gourd", "bottle_gourd", "bean", "spinach", "capsicum", "cabbage"
-        ]
-        if is_green:
-            green_mask = cv2.inRange(hsv, np.array([25, 35, 35]), np.array([90, 255, 255]))
-            combined = cv2.bitwise_or(thresh, green_mask)
-        else:
-            combined = thresh
-
-        contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        valid_cnts = [c for c in contours if cv2.contourArea(c) > 350]
-
-        if not valid_cnts:
+        median_area = float(reference.get("area_median", 0))
+        median_axis = float(reference.get("axis_median", 0))
+        if not np.all(np.isfinite([median_area, median_axis])) or min(median_area, median_axis) <= 0:
             return None
-
-        valid_cnts.sort(key=cv2.contourArea, reverse=True)
-        primary_cnt = valid_cnts[0]
-        area = float(cv2.contourArea(primary_cnt))
-
-        # Rotation and Zoom Invariant Aspect Ratio using minimum area bounding box
-        rect = cv2.minAreaRect(primary_cnt)
-        rw, rh = rect[1]
-        major_axis = float(max(rw, rh))
-        minor_axis = float(min(rw, rh)) + 1e-5
-        aspect_ratio = major_axis / minor_axis
-
-        ref = self.stats.get(target_species, {})
-        median_area = ref.get("area_median", 18000.0)
-        median_axis = ref.get("axis_median", 220.0)
-        ratio = area / median_area if median_area > 0 else 1.0
-
-        h, w = img_bgr.shape[:2]
-        frame_area = float(h * w)
-        fraction = area / frame_area
-        max_dim = max(rw, rh)
-
-        # Multi-Factor Invariant Sizing Engine (Scale, Rotation, Camera Angle & Distance Invariant)
-        elongated_crops = {
-            "okra", "cucumber", "bitter_gourd", "bottle_gourd", "bean", "carrot", "radish"
-        }
-        bulbous_compact_crops = {
-            "potato", "tomato", "onion", "capsicum", "brinjal"
-        }
-        massive_head_crops = {
-            "cabbage", "cauliflower", "broccoli", "pumpkin", "papaya"
-        }
-        leafy_crops = {"spinach"}
-
-        sp_key = target_species.lower().replace(" ", "_")
-        ecd = 2.0 * np.sqrt(area / np.pi)
-        ecd_fraction = ecd / min(h, w)
-        span_fraction = max_dim / max(h, w)
-        thickness_fraction = minor_axis / min(h, w)
-
-        if sp_key in elongated_crops:
-            # For elongated produce (Okra, Cucumber, Carrot, Radish, Bitter/Bottle Gourd, Beans):
-            # BIG requires: substantial area (ratio >= 0.80 or fraction >= 0.14) AND span >= 0.32
-            # SMALL if: ratio < 0.65 or span < 0.28 or fraction < 0.08
-            if (ratio >= 0.80 and span_fraction >= 0.32) or (fraction >= 0.14 and span_fraction >= 0.35) or (ratio >= 1.20):
-                size_class = "BIG"
-            elif ratio < 0.65 or span_fraction < 0.28 or fraction < 0.08:
-                size_class = "SMALL"
-            else:
-                size_class = "BIG" if (ratio >= 0.72 and span_fraction >= 0.32) else "SMALL"
-
-        elif sp_key in massive_head_crops:
-            # Massive head produce (Cabbage, Cauliflower, Broccoli, Pumpkin, Papaya):
-            if ratio >= 0.85 or fraction >= 0.14 or ecd_fraction >= 0.36:
-                size_class = "BIG"
-            elif ratio < 0.68 or fraction < 0.08:
-                size_class = "SMALL"
-            else:
-                size_class = "BIG" if ratio >= 0.75 else "SMALL"
-
-        elif sp_key in bulbous_compact_crops:
-            # Spherical & bulbous produce (Potato, Tomato, Onion, Capsicum, Brinjal):
-            if ratio >= 0.85 or fraction >= 0.12 or ecd_fraction >= 0.35:
-                size_class = "BIG"
-            elif ratio < 0.68 or fraction < 0.08:
-                size_class = "SMALL"
-            else:
-                size_class = "BIG" if ratio >= 0.75 else "SMALL"
-
-        elif sp_key in leafy_crops:
-            # Leafy bunches (Spinach):
-            if ratio >= 0.85 or fraction >= 0.15:
-                size_class = "BIG"
-            elif ratio < 0.68 or fraction < 0.08:
-                size_class = "SMALL"
-            else:
-                size_class = "BIG" if ratio >= 0.75 else "SMALL"
-
-        else:
-            if ratio >= 0.85 or fraction >= 0.12:
-                size_class = "BIG"
-            else:
-                size_class = "SMALL"
-
+        contour = self.appearance_contour(img_bgr)
+        if contour is None:
+            return None
+        area = float(cv2.contourArea(contour))
+        major_axis = float(max(cv2.minAreaRect(contour)[1]))
+        ratio = area / median_area
         return AppearanceSizeEstimate(
-            species_key=target_species.lower(),
-            pixel_area=round(area, 1),
-            major_axis_px=round(major_axis, 1),
-            ref_median_area_px=round(median_area, 1),
-            ref_median_axis_px=round(median_axis, 1),
-            area_ratio_to_median=round(ratio, 3),
-            appearance_size_class=size_class,
+            species_key=target.lower(), pixel_area=area, major_axis_px=major_axis,
+            ref_median_area_px=median_area, ref_median_axis_px=median_axis,
+            area_ratio_to_median=ratio,
+            appearance_size_class="BIG" if ratio >= 1.0 else "SMALL",
         )
 
     def render_appearance_overlay(
         self, img_bgr: np.ndarray, est: AppearanceSizeEstimate, species_name: str | None = None
     ) -> np.ndarray:
-        if img_bgr is None or img_bgr.size == 0 or est is None:
-            return img_bgr
-
         canvas = img_bgr.copy()
-        h, w = canvas.shape[:2]
-        target_species = (species_name or est.species_key).lower().replace(" ", "_")
-
-        hsv = cv2.cvtColor(canvas, cv2.COLOR_BGR2HSV)
-        is_green = any(k in target_species for k in ["okra", "cucumber", "bitter", "bottle", "bean", "spinach", "capsicum", "cabbage", "broccoli"])
-        is_red = any(k in target_species for k in ["tomato", "carrot", "chilli"])
-
-        if is_green:
-            mask = cv2.inRange(hsv, np.array([25, 30, 30]), np.array([95, 255, 255]))
-        elif is_red:
-            m1 = cv2.inRange(hsv, np.array([0, 40, 40]), np.array([18, 255, 255]))
-            m2 = cv2.inRange(hsv, np.array([160, 40, 40]), np.array([180, 255, 255]))
-            mask = cv2.bitwise_or(m1, m2)
-        else:
-            gray = cv2.cvtColor(canvas, cv2.COLOR_BGR2GRAY)
-            blur = cv2.GaussianBlur(gray, (5, 5), 0)
-            _, mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-        k = max(5, int(min(h, w) * 0.015))
-        if k % 2 == 0:
-            k += 1
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=3)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
-
-        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # Require substantial contour area (> 1200 px) AND solid organic fill (> 0.20)
-        valid = []
-        for c in cnts:
-            c_area = cv2.contourArea(c)
-            if c_area > 1200:
-                bx, by, bw, bh = cv2.boundingRect(c)
-                if (c_area / float(bw * bh)) >= 0.20:
-                    valid.append(c)
-
-        valid.sort(key=cv2.contourArea, reverse=True)
-
-        if valid:
-            for i, c in enumerate(valid[:3]):
-                x, y, bw, bh = cv2.boundingRect(c)
-                cv2.drawContours(canvas, [c], -1, (0, 230, 60), 2, cv2.LINE_AA)
-                cv2.rectangle(canvas, (x, y), (x + bw, y + bh), (0, 230, 60), 2, cv2.LINE_AA)
-                label = f"{est.appearance_size_class} · {est.species_key.title()}" if i == 0 else est.species_key.title()
-                badge_y = max(26, y - 8)
-                cv2.putText(canvas, label, (x + 4, badge_y), cv2.FONT_HERSHEY_DUPLEX, 0.72, (0, 255, 70), 2, cv2.LINE_AA)
-
-            pill_w = min(w - 20, 360)
-            pill_h = 36
-            sub = canvas[8:8+pill_h, 8:8+pill_w]
-            black_rect = np.zeros_like(sub)
-            cv2.addWeighted(sub, 0.25, black_rect, 0.75, 0, sub)
-            cv2.rectangle(canvas, (8, 8), (8 + pill_w, 8 + pill_h), (0, 230, 60), 1, cv2.LINE_AA)
-            cv2.putText(canvas, f"AI APPEARANCE SIZING: {est.appearance_size_class}", (18, 32), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
-
+        contour = self.appearance_contour(img_bgr)
+        if contour is None:
+            return canvas
+        scale = np.array([canvas.shape[1] / 224, canvas.shape[0] / 224])
+        contour = np.rint(contour * scale).astype(np.int32)
+        cv2.drawContours(canvas, [contour], -1, (0, 110, 45), 2, cv2.LINE_AA)
+        label = f"APPEARANCE ONLY: {est.appearance_size_class} {est.species_key}"
+        cv2.rectangle(canvas, (0, 0), (canvas.shape[1], 35), (0, 0, 0), -1)
+        cv2.putText(canvas, label, (5, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         return canvas

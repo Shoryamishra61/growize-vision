@@ -29,6 +29,29 @@ def request() -> InferenceRequest:
     )
 
 
+def test_cancelling_repeated_filename_preserves_completed_run(service, demo_dir, tmp_path):
+    source = demo_dir / "synthetic_potato_video.mp4"
+    first = process_video(source, service=service, request=request(), settings=service.settings,
+                          output_dir=tmp_path, max_frames=1)
+    assert first.output_video is not None
+    original = Path(first.output_video).read_bytes()
+    second = process_video(source, service=service, request=request(), settings=service.settings,
+                           output_dir=tmp_path, cancel_check=lambda: True)
+    assert second.cancelled
+    assert second.output_video is None
+    assert Path(first.output_video).read_bytes() == original
+    assert first.exports["json"] != second.exports["json"]
+
+
+def test_failed_replay_is_not_reported_as_completed(service, demo_dir, tmp_path, monkeypatch):
+    monkeypatch.setattr("growize_vision.video._verify_video", lambda path: (False, "simulated codec failure"))
+    report = process_video(demo_dir / "synthetic_potato_video.mp4", service=service,
+                           request=request(), settings=service.settings, output_dir=tmp_path, max_frames=1)
+    assert report.status == "OUTPUT_FAILED"
+    assert report.output_video is None
+    assert Path(report.exports["json"]).exists()
+
+
 def test_synthetic_video_metadata_is_read(demo_dir) -> None:
     metadata = inspect_video_metadata(demo_dir / "synthetic_potato_video.mp4")
     assert metadata.width == 1400
@@ -37,6 +60,9 @@ def test_synthetic_video_metadata_is_read(demo_dir) -> None:
     assert metadata.frame_count == 30
     assert metadata.duration_s == pytest.approx(3.0)
     assert not metadata.fps_estimated
+    import hashlib
+
+    assert metadata.to_dict()["sha256"] == hashlib.sha256((demo_dir / "synthetic_potato_video.mp4").read_bytes()).hexdigest()
 
 
 def test_video_limits_are_enforced(demo_dir) -> None:

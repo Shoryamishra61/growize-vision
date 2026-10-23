@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, replace
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -32,7 +33,7 @@ from .markers import (
     detect_best_marker,
     marker_mask,
 )
-from .media import MediaError, resize_for_processing, validate_bgr_frame
+from .media import MediaError, image_sha256, resize_for_processing, validate_bgr_frame
 from .quality import assess_quality
 from .rendering import render_inspection
 from .segmentation_cv import segment_foreground
@@ -50,6 +51,7 @@ class InferenceRequest:
     demo_policy: bool = False
     segmentation_mode: str = "opencv_baseline"
     notes: str | None = None
+    allow_appearance_estimate: bool = False
 
 
 @dataclass
@@ -57,13 +59,18 @@ class InferenceService:
     policies: PolicyRegistry = field(default_factory=load_policies)
     settings: InferenceSettings = field(default_factory=load_inference_settings)
     neural_model: Any = None
+    identity_service: Any = None
 
     def __post_init__(self) -> None:
-        self._pipeline_version = "opencv-controlled-mat-0.1.0"
+        self._pipeline_version = "opencv-controlled-mat-0.2.0"
+        source_hash = hashlib.sha256()
+        for path in sorted(Path(__file__).parent.glob("*.py")):
+            source_hash.update(path.name.encode())
+            source_hash.update(path.read_bytes())
         self._code_fingerprint = hashlib.sha256(
             (
                 f"{__version__}|{self._pipeline_version}|"
-                f"{self.settings.config_sha256}|{self.policies.config_sha256}"
+                f"{source_hash.hexdigest()}|{self.settings.config_sha256}|{self.policies.config_sha256}"
             ).encode()
         ).hexdigest()
 
@@ -89,6 +96,30 @@ class InferenceService:
             return self._invalid_result(result_id, context, str(exc), started)
 
         original_shape = tuple(int(v) for v in input_bgr.shape)
+        if self.identity_service is not None:
+            screen_started = time.perf_counter()
+            present, reason = self.identity_service.detect_produce_presence(input_bgr)
+            timings["input_screen_ms"] = (time.perf_counter() - screen_started) * 1000
+            if not present:
+                status = Status.NOT_PRODUCE
+                if reason == "FRAME_TOO_DARK":
+                    status = Status.LOW_IMAGE_QUALITY
+                elif reason == "FRAME_TOO_SMALL":
+                    status = Status.INVALID_INPUT
+                elif reason.startswith("EMPTY_"):
+                    status = Status.NO_OBJECT
+                elif reason == "NO_PRODUCE_DETECTED":
+                    status = Status.OUT_OF_DISTRIBUTION
+                refused = InspectionResult(
+                    result_id=result_id, context=context, status=status,
+                    reasons=[reason], original_shape=original_shape,
+                    software_version=__version__, pipeline_version=self._pipeline_version,
+                    pipeline_sha256=self._code_fingerprint,
+                    timings_ms=timings,
+                )
+                refused.annotated_image = render_inspection(input_bgr, refused)
+                refused.processing_ms = (time.perf_counter() - started) * 1000.0
+                return refused
         pre_start = time.perf_counter()
         processing_bgr, resize_scale = resize_for_processing(
             input_bgr, self.settings.max_processing_dimension
@@ -170,6 +201,22 @@ class InferenceService:
         timings["quality_ms"] = (time.perf_counter() - quality_start) * 1000.0
         warnings.extend(quality.flags)
 
+        species_prediction = None
+        if request.crop_key == "auto":
+            identity_started = time.perf_counter()
+            if self.identity_service is None:
+                from .crop_identity import CropIdentityService
+
+                self.identity_service = CropIdentityService()
+            species_prediction = self.identity_service.predict_species(input_bgr)
+            # A scene-level suggestion must not assign a species to each separate item.
+            effective_crop = (species_prediction.species_key
+                              if species_prediction and len(segmentation.objects) == 1 else None)
+            request = replace(request, crop_key=effective_crop)
+            if effective_crop is None:
+                warnings.append("AUTO_CROP_UNRESOLVED: select a crop explicitly or recapture one separated item.")
+            timings["crop_identity_ms"] = (time.perf_counter() - identity_started) * 1000
+
         policy = None
         policy_error: str | None = None
         if request.crop_key:
@@ -224,9 +271,29 @@ class InferenceService:
             pipeline_version=self._pipeline_version,
             pipeline_sha256=self._code_fingerprint,
             timings_ms=timings,
+            processed_frame_sha256=image_sha256(processing_bgr),
+            species_prediction=asdict(species_prediction) if species_prediction else None,
         )
+        if self.identity_service is not None and (species_prediction is not None):
+            model_path = (self.identity_service.deep_classifier_path if self.identity_service.is_deep
+                          else self.identity_service.classifier_path)
+            if model_path.exists():
+                result.model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+        if request.allow_appearance_estimate and not calibration.valid and request.crop_key and len(instances) == 1:
+            if self.identity_service is None:
+                from .crop_identity import CropIdentityService
+
+                self.identity_service = CropIdentityService()
+            estimate = self.identity_service.estimate_appearance_size(input_bgr, request.crop_key)
+            if estimate is not None:
+                result.appearance_estimate = asdict(estimate)
+                result.warnings.append(estimate.disclaimer)
         render_start = time.perf_counter()
         result.annotated_image = render_inspection(processing_bgr, result)
+        if result.appearance_estimate is not None:
+            result.annotated_image = self.identity_service.render_appearance_overlay(
+                input_bgr, estimate, request.crop_key,
+            )
         result.timings_ms["render_ms"] = (time.perf_counter() - render_start) * 1000.0
         result.processing_ms = (time.perf_counter() - started) * 1000.0
         return result

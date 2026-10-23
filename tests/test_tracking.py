@@ -43,6 +43,20 @@ def test_borderline_frame_clears_the_stable_label() -> None:
     assert "not an accepted grade" in review["message"]
 
 
+def test_camera_failure_discards_stale_overlay_and_stability():
+    session = LiveSession()
+    for _ in range(3):
+        session.observe(accepted(SizeClass.BIG))
+    session.last_annotated_rgb = "previous BIG overlay"
+    session.invalidate_current_frame()
+    assert session.last_annotated_rgb is None
+    assert session.frames_seen == 3
+    assert session.eligible_frames == 3
+    state = session.observe(accepted(SizeClass.BIG))
+    assert state["stable"] is False
+    assert state["samples"] == 1
+
+
 def test_majority_wins_but_current_frame_is_always_separate() -> None:
     stabilizer = LiveStabilizer()
     stabilizer.feed(accepted(SizeClass.SMALL))

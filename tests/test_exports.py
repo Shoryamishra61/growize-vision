@@ -49,6 +49,7 @@ def test_inspection_export_writes_png_json_csv_and_paths(service, demo_dir, tmp_
     assert payload["export"]["csv"] == paths["csv"]
     assert payload["exported_paths"]["json"] == paths["json"]
     assert len(payload["pipeline_sha256"]) == 64
+    assert len(payload["processed_frame_sha256"]) == 64
     assert payload["model_sha"] is None
     assert "ARL-approved" in payload["export"]["notice"]
 

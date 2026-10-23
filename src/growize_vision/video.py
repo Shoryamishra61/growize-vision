@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import math
 import time
 from dataclasses import dataclass, field
@@ -12,9 +13,10 @@ import cv2
 import numpy as np
 
 from .config import InferenceSettings
-from .domain import MediaContext, SourceType, Status
+from .domain import MediaContext, SourceType, Status, new_id
 from .exports import export_video_report, flatten_result_rows
 from .inference import InferenceRequest, InferenceService
+from .media import safe_export_stem
 
 
 class VideoError(ValueError):
@@ -30,6 +32,7 @@ class VideoMetadata:
     duration_s: float | None
     fps_estimated: bool = False
     warnings: list[str] = field(default_factory=list)
+    sha256: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -40,6 +43,7 @@ class VideoMetadata:
             "duration_s": round(self.duration_s, 3) if self.duration_s else None,
             "fps_estimated": self.fps_estimated,
             "warnings": list(self.warnings),
+            "sha256": self.sha256,
         }
 
 
@@ -68,6 +72,7 @@ class VideoReport:
             "sampled_frames": self.sampled_frames,
             "summary": self.summary,
             "warnings": self.warnings,
+            "source_sha256": self.metadata.sha256 if self.metadata else None,
             "exports": self.exports,
             "processing_ms": round(self.processing_ms, 3),
             "codec": self.codec,
@@ -131,6 +136,10 @@ def inspect_video_metadata(
                 f"Video duration {duration:.1f} s exceeds the configured "
                 f"{max_duration_s:.1f} s limit."
             )
+        source_digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                source_digest.update(chunk)
         return VideoMetadata(
             fps=fps,
             frame_count=frame_count,
@@ -139,6 +148,7 @@ def inspect_video_metadata(
             duration_s=duration,
             fps_estimated=fps_estimated,
             warnings=warnings_list,
+            sha256=source_digest.hexdigest(),
         )
     finally:
         cap.release()
@@ -244,13 +254,10 @@ def process_video(
     cap = cv2.VideoCapture(str(source))
     if not cap.isOpened():
         raise VideoError("Video decoder could not open the file for processing.")
-    output_folder = Path(output_dir) / "video" / source.stem
-    output_folder.mkdir(parents=True, exist_ok=True)
+    output_folder = Path(output_dir) / "video" / f"{safe_export_stem(source.stem)}_{new_id('run')}"
+    output_folder.mkdir(parents=True, exist_ok=False)
     partial_path = output_folder / "annotated.partial.mp4"
     final_path = output_folder / "annotated.mp4"
-    for stale in (partial_path, final_path):
-        if stale.exists():
-            stale.unlink()
     writer = None
     codec = ""
     frame_results: list[dict[str, Any]] = []
@@ -295,6 +302,7 @@ def process_video(
                     timestamp_s=float(timestamp_s),
                     batch_id=request.notes or source.stem,
                     session_id="video",
+                    source_sha256=meta.sha256,
                 )
                 result = service.inspect_frame(frame, context, request)
                 annotated = result.annotated_image if result.annotated_image is not None else frame
@@ -315,9 +323,16 @@ def process_video(
                         "size_class": result.size_class.value if result.size_class else None,
                         "instance_count": len(result.instances),
                         "processing_ms": round(result.processing_ms, 3),
+                        "species_prediction": result.species_prediction,
+                        "species_prediction_scope": "scene" if result.species_prediction else None,
+                        "appearance_estimate": result.appearance_estimate,
+                        "model_sha": result.model_sha,
+                        "pipeline_sha256": result.pipeline_sha256,
+                        "processed_frame_sha256": result.processed_frame_sha256,
                         "instances": [
                             {
                                 "instance_id": inst.instance_id,
+                                "crop_key": inst.crop_key,
                                 "status": inst.decision.status.value
                                 if inst.decision
                                 else "NO_DECISION",
@@ -393,6 +408,10 @@ def process_video(
             codec=codec,
             cancelled=True,
         )
+        report.exports = export_video_report(
+            report_payload=report.to_dict(), frame_rows=frame_rows,
+            output_root=output_dir, stem=output_folder.name,
+        )
         return report
 
     if sampled == 0 or writer is None:
@@ -422,8 +441,8 @@ def process_video(
         "status_counts": status_counts,
         "size_class_counts_per_frame_observation": class_counts,
     }
-    report_status = "COMPLETED_WITH_REVIEW"
-    if status_counts and all(k == Status.ACCEPTED.value for k in status_counts):
+    report_status = "COMPLETED_WITH_REVIEW" if playable else "OUTPUT_FAILED"
+    if playable and status_counts and all(k == Status.ACCEPTED.value for k in status_counts):
         report_status = "COMPLETED"
     report = VideoReport(
         status=report_status,
@@ -442,7 +461,7 @@ def process_video(
         report_payload=report.to_dict(),
         frame_rows=frame_rows,
         output_root=output_dir,
-        stem=source.stem,
+        stem=output_folder.name,
     )
     report.exports = exports
     if progress:

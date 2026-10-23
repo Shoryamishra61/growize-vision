@@ -1,4 +1,4 @@
-# Growize Vision — Production Cloud Run Dockerfile
+# Growize Vision — container recipe (requires a Docker build verification).
 FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -21,18 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy configuration and dependency specs
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md requirements.txt ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
-    gradio>=4.36.0 \
-    opencv-python-headless>=4.8.0 \
-    numpy>=1.24.0 \
-    scikit-learn>=1.3.0 \
-    pillow>=10.0.0 \
-    pyyaml>=6.0.0 \
-    imageio-ffmpeg>=0.4.9
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy package source code, models, and assets
 COPY src/ ./src/
@@ -42,7 +34,7 @@ COPY data/demo/ ./data/demo/
 COPY apps/ ./apps/
 
 # Install the package in editable/local mode
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir --no-deps -e .
 
 EXPOSE 8080
 

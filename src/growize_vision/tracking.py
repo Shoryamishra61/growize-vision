@@ -72,6 +72,14 @@ class LiveSession:
     last_accepted_utc: str | None = None
     last_annotated_rgb: object | None = field(default=None, repr=False)
 
+    def invalidate_current_frame(self) -> None:
+        self.last_annotated_rgb = None
+        self.stabilizer = LiveStabilizer(
+            window=self.stabilizer.window,
+            minimum_agree=self.stabilizer.minimum_agree,
+            last_status=Status.INVALID_INPUT,
+        )
+
     def observe(self, result: InspectionResult) -> dict[str, object]:
         self.frames_seen += 1
         stats = self.stabilizer.feed(result)

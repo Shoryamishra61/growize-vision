@@ -43,6 +43,16 @@ test_evidence/
 
 # Raw dataset archives (too large for Git)
 data/raw/
+data/external/
+reports/species_training_v2/cache/
+reports/species_training_v3/cache/
+reports/species_training_v4/cache/
+reports/species_training_v5/cache/
+reports/negative_audit/sheet_*.jpg
+data/derived/
+reports/species_audit/**/embeddings.npz
+reports/release_wheels/
+.venv-release/
 data/calibrated_real_samples/
 data/kaggle_veg/
 data/kaggle_sample/

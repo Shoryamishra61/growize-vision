@@ -1,10 +1,15 @@
 numpy==2.2.6
-opencv-python==4.11.0.86
+opencv-python-headless==4.11.0.86
 Pillow==10.4.0
 PyYAML==6.0.3
 gradio==4.36.1
 huggingface-hub==0.25.2
 gradio-client==1.0.1
+fastapi==0.112.2
+starlette==0.37.2
+pydantic==2.8.2
+imageio==2.37.4
+imageio-ffmpeg==0.6.0
 pandas==2.3.3
 
 [dev]
@@ -14,3 +19,5 @@ ruff==0.9.10
 [ml]
 torch==2.14.0+cpu
 torchvision==0.29.0+cpu
+timm==1.0.29
+scikit-learn==1.7.2

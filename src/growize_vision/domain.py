@@ -24,6 +24,7 @@ class Status(str, Enum):
 
     ACCEPTED = "ACCEPTED"
     NO_OBJECT = "NO_OBJECT"
+    NOT_PRODUCE = "NOT_PRODUCE"
     CALIBRATION_REQUIRED = "CALIBRATION_REQUIRED"
     POLICY_REQUIRED = "POLICY_REQUIRED"
     OCCLUDED = "OCCLUDED"
@@ -70,6 +71,7 @@ class MediaContext:
     timestamp_s: float | None = None
     batch_id: str | None = None
     session_id: str | None = None
+    source_sha256: str | None = None
 
 
 @dataclass
@@ -293,6 +295,7 @@ class InspectionResult:
     pipeline_version: str = "opencv-baseline-0.1.0"
     pipeline_sha256: str = ""
     model_sha: str | None = None
+    processed_frame_sha256: str | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -300,6 +303,8 @@ class InspectionResult:
     exported_paths: dict[str, str] = field(default_factory=dict)
     timings_ms: dict[str, float] = field(default_factory=dict)
     tracking_summary: dict[str, Any] | None = None
+    species_prediction: dict[str, Any] | None = None
+    appearance_estimate: dict[str, Any] | None = None
 
     def to_dict(self, include_instances: bool = True) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -314,6 +319,7 @@ class InspectionResult:
                 "timestamp_s": self.context.timestamp_s,
                 "batch_id": self.context.batch_id,
                 "session_id": self.context.session_id,
+                "source_sha256": self.context.source_sha256,
             },
             "status": self.status.value,
             "size_class": self.size_class.value if self.size_class else None,
@@ -336,8 +342,12 @@ class InspectionResult:
             "pipeline_version": self.pipeline_version,
             "pipeline_sha256": self.pipeline_sha256,
             "model_sha": self.model_sha,
+            "processed_frame_sha256": self.processed_frame_sha256,
             "exported_paths": dict(self.exported_paths),
             "tracking_summary": self.tracking_summary,
+            "species_prediction": self.species_prediction,
+            "species_prediction_scope": "scene" if self.species_prediction else None,
+            "appearance_estimate": self.appearance_estimate,
         }
         return payload
 

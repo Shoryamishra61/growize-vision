@@ -22,6 +22,8 @@ def _row_for_instance(result: InspectionResult, instance: Any) -> dict[str, Any]
         "timestamp_utc": result.timestamp,
         "source_type": result.context.source_type.value,
         "source_id": result.context.source_id,
+        "source_sha256": result.context.source_sha256,
+        "processed_frame_sha256": result.processed_frame_sha256,
         "frame_id": result.context.frame_id,
         "timestamp_s": result.context.timestamp_s,
         "batch_id": result.context.batch_id,

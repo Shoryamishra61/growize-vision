@@ -53,5 +53,5 @@ exports:
   retain_original_media: false
 
 demo:
-  enabled_by_default: true
+  enabled_by_default: false
   banner: "DEMO THRESHOLDS ACTIVE - engineering demonstration only; not ARL-approved grade policy."

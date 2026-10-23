@@ -5,12 +5,17 @@ Summary: Calibrated, safety-conscious vegetable size grading for Growize Farms /
 Requires-Python: <3.12,>=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: numpy==2.2.6
-Requires-Dist: opencv-python==4.11.0.86
+Requires-Dist: opencv-python-headless==4.11.0.86
 Requires-Dist: Pillow==10.4.0
 Requires-Dist: PyYAML==6.0.3
 Requires-Dist: gradio==4.36.1
 Requires-Dist: huggingface-hub==0.25.2
 Requires-Dist: gradio-client==1.0.1
+Requires-Dist: fastapi==0.112.2
+Requires-Dist: starlette==0.37.2
+Requires-Dist: pydantic==2.8.2
+Requires-Dist: imageio==2.37.4
+Requires-Dist: imageio-ffmpeg==0.6.0
 Requires-Dist: pandas==2.3.3
 Provides-Extra: dev
 Requires-Dist: pytest==8.3.5; extra == "dev"
@@ -18,3 +23,271 @@ Requires-Dist: ruff==0.9.10; extra == "dev"
 Provides-Extra: ml
 Requires-Dist: torch==2.14.0+cpu; extra == "ml"
 Requires-Dist: torchvision==0.29.0+cpu; extra == "ml"
+Requires-Dist: timm==1.0.29; extra == "ml"
+Requires-Dist: scikit-learn==1.7.2; extra == "ml"
+
+---
+title: Growize Vision
+emoji: 🥦
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.36.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+
+# Growize Vision
+
+**Calibrated, refusal-first SMALL/BIG vegetable size grading for a controlled matte station.**
+One shared inference engine serves still-image upload, laptop webcam inspection, and MP4
+upload; accepted observations receive exactly one of two labels, `SMALL` or `BIG`.
+
+> ## Evidence status — read this first
+>
+> - **No learned model was trained.** There are no weights, no checkpoints, and no
+>   model accuracy. `model_sha` is `null`. The release path is the deterministic
+>   OpenCV/ArUco baseline.
+> - **No real measured dataset was supplied.** Real-produce accuracy, measurement
+>   MAE, per-crop confusion matrices, and field coverage are **`NOT EVALUATED`**.
+> - **No ARL/Growize thresholds were supplied.** Every real `threshold_mm` in
+>   `config/grade_rules.yaml` is `null`. The demo cut-offs are clearly labelled
+>   engineering demonstrations and are **not** agricultural or buyer standards.
+> - Synthetic fixtures verify geometry, status precedence, and refusal behaviour.
+>   They are **not** accuracy evidence.
+> - Release state: **YELLOW** — functional calibrated pilot with no real-produce
+>   validation. It is not production, field, or safety certified.
+
+## What the app does
+
+For one operator-selected crop and one visible, non-touching vegetable on a plain
+matte plane:
+
+1. Decode and normalise the image, webcam frame, or sampled video frame.
+2. Detect a printed ArUco marker and validate its geometry, ID, and user-measured
+   outer side length.
+3. Segment the foreground against the controlled background and exclude the marker.
+4. Project the silhouette onto the marker plane and compute a named physical metric.
+5. Apply the crop policy with a guard band around the threshold.
+6. Emit `SMALL`, `BIG`, or an explicit non-acceptance state with a reason and audit
+   record.
+
+Only `SMALL` and `BIG` are accepted size classes. `NO_OBJECT`,
+`CALIBRATION_REQUIRED`, `POLICY_REQUIRED`, `OCCLUDED`, `REVIEW_BORDERLINE`,
+`LOW_IMAGE_QUALITY`, `OUT_OF_DISTRIBUTION`, `MODEL_UNAVAILABLE`,
+`INVALID_INPUT`, and `MULTIPLE_OBJECTS` are operational states, never a third grade.
+
+## Quick start (Windows, verified)
+
+```powershell
+cd "C:\code_shit\projects\agriculture vegetables"
+python -m pip install -e .
+python -m pytest -q
+python scripts/demo_preflight.py --full-video --camera
+python apps\gradio_app.py
+```
+
+Open <http://127.0.0.1:7860>. The server binds to `127.0.0.1` by default, has no
+authentication and no cloud upload path, and must not be exposed to an untrusted
+network. Environment overrides: `GROWIZE_HOST`, `GROWIZE_PORT`.
+
+Verified stack: Python 3.10.11, OpenCV 4.11.0, NumPy 2.2.6, Gradio 4.36.1,
+FastAPI 0.112.2, Starlette 0.37.2, Pydantic 2.8.2, imageio-ffmpeg 0.6.0.
+See `pyproject.toml` for the pinned dependencies.
+
+## What `SMALL` / `BIG` means physically
+
+There is no universal vegetable size rule. Each crop policy names a physical unit,
+a metric, a threshold, a comparator, and a guard band:
+
+| Crop | Physical unit | Metric | Real cut-off | Demo cut-off |
+|---|---|---|---|---:|---:|
+| Potato | single tuber | projected minimum-area-rectangle short side | `null` | 60 mm |
+| Onion | single bulb | projected minimum-area-rectangle short side | `null` | 55 mm |
+| Tomato | single fruit | projected minimum-area-rectangle short side | `null` | 58 mm |
+| Okra | single pod | projected minimum-area-rectangle long side | `null` | 100 mm |
+| Cucumber | single fruit | projected minimum-area-rectangle long side | `null` | 150 mm |
+| Spinach | single leaf | projected minimum-area-rectangle long side | `null` | 100 mm |
+| Coriander | undefined leaf/bunch | projected area | `null` | none |
+
+The real threshold is applied only when ARL/Growize supplies and approves it. Demo
+mode uses `demo_threshold_mm` and stamps every result and export with
+`ASSESSMENT_DEMO_ONLY`. The comparator is `>=`; the 0.5 mm guard band means an
+uncertainty interval that touches the threshold yields `REVIEW_BORDERLINE` rather
+than a forced class. See `config/grade_rules.yaml` and `docs/CALIBRATION.md`.
+
+## Supported inputs and tested scope
+
+| Path | Status | Tested scope |
+|---|---|---|
+| JPEG / PNG / WebP upload | **PASS** | Unit tests plus browser upload, inspection, PNG/JSON/CSV download |
+| Laptop webcam, localhost | **PASS (device capture)** | One-frame OpenCV capture in preflight; live UI path implemented; see `reports/DEMO_REPORT.md` for the browser-session result |
+| MP4 upload | **PASS** | Programmatic H.264 export, no audio, per-frame labels; browser UI smoke test recorded in `reports/DEMO_REPORT.md` |
+| Phone gallery upload | **BLOCKED** | No physical phone/network round-trip in this environment |
+| Phone live camera over HTTPS | **BLOCKED** | No secure origin/device test; `getUserMedia` needs HTTPS outside localhost |
+| Multi-image batch mode | **NOT IMPLEMENTED** | P1 scope, not shipped |
+| Trained segmentation model | **NOT SHIPPED** | No licensed measured data, QA'd masks, or compatible GPU |
+| Autonomous sorter / actuator | **OUT OF SCOPE** | No hardware, safety case, or field validation |
+
+The segmentation baseline requires a plain matte background. Cluttered farm scenes
+are outside the validated domain and produce `OUT_OF_DISTRIBUTION` when detected.
+
+## Architecture
+
+```text
+image / webcam / MP4
+        │
+        ▼
+ media decode + normalisation + size limits
+        │
+        ▼
+ quality gate ──────────────► LOW_IMAGE_QUALITY
+        │
+        ▼
+ ArUco detection + measured-side validation
+        │ invalid ───────────► CALIBRATION_REQUIRED
+        ▼
+ foreground segmentation + marker exclusion
+        │ empty ─────────────► NO_OBJECT
+        │ edge/overlap ──────► OCCLUDED / MULTIPLE_OBJECTS
+        ▼
+ projected-plane metrology + uncertainty envelope
+        │
+        ▼
+ crop policy (metric, threshold, guard band)
+        │ no approval ───────► POLICY_REQUIRED
+        ▼
+ SMALL / BIG / REVIEW_BORDERLINE
+        │
+        ▼
+ annotated image + JSON audit + CSV + optional H.264 video
+```
+
+Every input adapter calls `InferenceService.inspect_frame`; there is no separate
+webcam or video grading logic. See `docs/ARCHITECTURE.md`.
+
+## Measured evidence in this repository
+
+| Evidence | Result | Scope |
+|---|---|---|
+| Unit/integration suite | **164 passed** (`python -m pytest -q`) | Geometry, media, config, inference, exports, video, tracking, dataset |
+| Synthetic contract suite | **8/8 checks passed** | Status/refusal contract and known synthetic geometry only |
+| Synthetic geometry error | median 0.179 mm, max 0.268 mm over 4 fixtures | Vector-defined fixtures, **not real produce** |
+| CPU latency, 80 timed observations | median 116.0 ms, p95 124.3 ms | One frame at a time, decode excluded, this workstation |
+| Demo preflight | **PASS** | Assets, hashes, config, synthetic contract, H.264 video, one webcam frame |
+| Real measured specimens | **NOT EVALUATED** | No dataset |
+| Trained model comparison | **BLOCKED** | No model |
+| Real-produce confusion matrix | **NOT EVALUATED** | No real labels/thresholds |
+
+Raw reports: `reports/pytest_full.txt`, `reports/synthetic_evaluation.json`,
+`reports/latency_report.json`, `reports/preflight.json`,
+`reports/metrics/final_results.json`.
+
+## Dataset and model status
+
+- `data/dataset_manifest_template.json` is an **empty template**, not evidence.
+- `data/demo/demo_manifest.json` contains **synthetic fixtures only**.
+- `scripts/validate_dataset.py` rejects missing provenance/licence/consent,
+  duplicate hashes, missing measured truth, and split leakage.
+- `scripts/group_split.py` assigns whole lots/sessions/specimens to one split.
+- `scripts/evaluate_baseline.py` refuses to emit a confusion matrix until real,
+  measured, licensed specimens and approved thresholds exist.
+- `scripts/train_segmentation.py` deliberately refuses to train and exits `BLOCKED`.
+- `docs/DATASET_CARD.md` and `docs/MODEL_CARD.md` record the absence honestly.
+
+## Failure behaviour (synthetic gallery)
+
+Four required refusal cases are rendered in `reports/failure_gallery/index.md`:
+missing marker, empty mat, blurred frame, and edge-clipped object. Each panel shows
+the original image, annotated result, expected status, and actual reason. All are
+labelled synthetic. A real-produce failure gallery is **BLOCKED** until measured
+specimens exist.
+
+## Commands
+
+```powershell
+# Tests and evidence
+python -m pytest -q
+python -m pytest -q *> reports\pytest_full.txt
+python -m ruff check .
+
+# Synthetic contract and latency
+python scripts\evaluate_synthetic.py
+python scripts\benchmark_latency.py --runs 10 --warmup 2
+python scripts\build_failure_gallery.py
+
+# Environment and media preflight
+python scripts\demo_preflight.py --full-video --camera
+
+# Real dataset gates (currently blocked/empty by design)
+python scripts\validate_dataset.py --manifest data\dataset_manifest_template.json --allow-empty
+python scripts\group_split.py --manifest <real_manifest.json>
+python scripts\evaluate_baseline.py --manifest <real_manifest.json> --marker-side-mm <measured_mm>
+
+# Honest training refusal
+python scripts\train_segmentation.py
+
+# App
+python apps\gradio_app.py
+```
+
+## Three-minute demo path
+
+1. Show the policy banner: real cut-offs are `TBD`; demo mode is not official.
+2. Upload `data/demo/potato_big_synthetic.png` with demo mode on. Point to the
+   calibrated marker, measured 72.3 mm value, and `BIG`.
+3. Upload `data/demo/okra_small_synthetic.png`; show the long-axis metric and
+   `SMALL`.
+4. Clear the image, disable demo mode, re-inspect. Show `POLICY_REQUIRED` and the
+   `NO_APPROVED_THRESHOLD` reason.
+5. Upload `data/demo/no_marker_synthetic.png`; show `CALIBRATION_REQUIRED` with no
+   millimetres.
+6. Open the MP4 tab and process `data/demo/synthetic_potato_video.mp4`; explain
+   that counts are **per-frame observations**, not unique vegetables.
+7. Open **Evidence & limits** and `reports/DEMO_REPORT.md`; state plainly that no
+   real measured validation or trained model exists.
+
+Full script and fallback: `docs/DEMO_SCRIPT.md`.
+
+## Repository layout
+
+```text
+apps/gradio_app.py                 local Gradio UI
+src/growize_vision/                core engine and contracts
+config/                            policy, inference, camera settings
+assets/                            printable ArUco marker
+data/demo/                         synthetic fixtures + manifest
+data/dataset_manifest_template.json
+scripts/                           evidence, validation, split, training refusal
+tests/                             164 automated tests
+reports/                           raw evidence, metrics, failure gallery
+docs/                              PRD, SRS, cards, calibration, traceability
+```
+
+## Limitations and next steps
+
+The full list is in `docs/KNOWN_LIMITATIONS.md`. The shortest version:
+
+- No real measured produce, no real accuracy, no real threshold approval.
+- One visible object on a plain matte plane only; no clutter, occlusion, stacking,
+  hidden extent, weight, volume, soil, nutrition, or yield claims.
+- Single overhead planar homography cannot recover the top surface of a tall
+  object; parallax/height bias is bounded by an engineering envelope, not a
+  statistical 95% interval.
+- To move forward: print and physically measure the marker, collect 60–100 measured
+  specimens with repeat caliper readings and consent/licence metadata, freeze the
+  ARL policy, run the grouped frozen test, and only then consider a learned
+  segmenter trained on QA'd masks from that licensed dataset.
+
+## Documentation
+
+- `docs/PRD.md`, `docs/SRS.md` — delivered scope and requirements
+- `docs/ARCHITECTURE.md` — modules, contracts, status precedence
+- `docs/CALIBRATION.md` — marker, plane geometry, uncertainty
+- `docs/DATASET_CARD.md`, `docs/MODEL_CARD.md` — honest data/model disclosures
+- `docs/VALIDATION_PLAN.md` — what was tested, what remains blocked
+- `docs/REQUIREMENT_TRACEABILITY.md` — requirement → code → test → evidence
+- `docs/KNOWN_LIMITATIONS.md` — non-goals and failure modes
+- `reports/DEMO_REPORT.md` — mandatory evaluator evidence report
+- `reports/EXPERIMENTS.md` — baseline vs absent model, no fabricated comparison

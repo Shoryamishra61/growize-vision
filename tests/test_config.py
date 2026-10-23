@@ -142,7 +142,7 @@ def test_runtime_settings_load_and_validate() -> None:
     assert settings.calibration.dictionary == "DICT_4X4_50"
     assert len(settings.config_sha256) == 64
     assert settings.to_dict()["version"] == settings.version
-    assert settings.demo_enabled_by_default is True
+    assert settings.demo_enabled_by_default is False
 
 
 def test_invalid_runtime_settings_are_rejected(tmp_path) -> None:
