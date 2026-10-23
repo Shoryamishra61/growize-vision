@@ -55,7 +55,7 @@ REFERENCE_UNCERTAINTY = {
 MESSAGES = {
     Status.CALIBRATION_REQUIRED: (
         "Scale needed",
-        "Physical size cannot be measured without scale. Either place the printed marker beside the item, or click the two end points of any object of known length (ruler, card, coin edge) in the image and enter that length under 'Reference scale'.",
+        "No physical scale in this photo. Place the printed marker beside the item, or click the two end points of a known length (ruler, card, coin) under 'One-off reference scale'. An uncalibrated SMALL/BIG estimate is shown automatically when the detected crop has real-photo size references.",
     ),
     Status.POLICY_REQUIRED: (
         "Crop rule needed",
@@ -105,7 +105,27 @@ def present_result(result, session=None):
     title, message = MESSAGES.get(
         result.status, ("Cannot verify", "No verified size result is available.")
     )
-    if result.status == Status.ACCEPTED and (
+    if result.status != Status.ACCEPTED and result.appearance_estimate is not None:
+        estimate = result.appearance_estimate
+        title = f"Estimated {estimate['appearance_size_class']} (uncalibrated)"
+        message = (
+            f"Detected {estimate['species_key'].replace('_', ' ')}; its footprint is "
+            f"{estimate['area_ratio_to_median']:.2f}x the typical size in real-photo "
+            f"references -> estimated {estimate['appearance_size_class']}. This is an "
+            "appearance comparison, not millimetres: framing and distance change it. "
+            "Add the printed marker or any known-length reference for measured grading."
+        )
+    elif result.status != Status.ACCEPTED and any(
+        w.startswith("APPEARANCE_PRIORS_MISSING") for w in result.warnings
+    ):
+        title = "Scale needed (no size references for this crop)"
+        message = (
+            "This photo has no physical scale, and this crop has no real-photo size "
+            "references yet, so neither measured nor estimated grading is possible. "
+            "Use the printed marker, a clicked known-length reference, or pick a crop "
+            "with published references."
+        )
+    elif result.status == Status.ACCEPTED and (
         result.size_class is not None or result.size_band is not None
     ):
         measurement = next(
@@ -160,6 +180,9 @@ def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm,
         reference_uncertainty_mm=uncertainty,
         station_mode=bool(station_mode),
         station_id=STATION_ID if station_mode else None,
+        # No scale in the photo? Fall back to the uncalibrated appearance
+        # estimate vs real-photo species size priors, clearly labelled.
+        allow_appearance_estimate=True,
     )
     try:
         decoded = load_image_file(
@@ -349,8 +372,6 @@ def build_app():
                             marker_side = gr.Number(
                                 label="Printed marker side (mm) — measured once at station setup",
                                 value=None,
-                                minimum=5,
-                                maximum=1000,
                             )
                         station_toggle = gr.Checkbox(
                             value=True,
@@ -364,9 +385,7 @@ def build_app():
                                 value=list(REFERENCE_PRESETS.keys())[0],
                                 label="Known length of the clicked span",
                             )
-                            ref_length = gr.Number(
-                                label="True length (mm)", value=None, minimum=5, maximum=1000
-                            )
+                            ref_length = gr.Number(label="True length (mm)", value=None)
                             ref_uncertainty = gr.Dropdown(
                                 choices=list(REFERENCE_UNCERTAINTY.keys()),
                                 value=list(REFERENCE_UNCERTAINTY.keys())[0],

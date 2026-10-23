@@ -367,6 +367,16 @@ class InferenceService:
             if estimate is not None:
                 result.appearance_estimate = asdict(estimate)
                 result.warnings.append(estimate.disclaimer)
+            else:
+                title_key = request.crop_key.strip().replace(" ", "_").title()
+                if hasattr(self.identity_service, "stats") and title_key not in (
+                    self.identity_service.stats or {}
+                ):
+                    result.warnings.append(
+                        "APPEARANCE_PRIORS_MISSING: no real-photo size references "
+                        f"exist for '{request.crop_key}' yet, so no uncalibrated "
+                        "SMALL/BIG estimate is possible for this crop."
+                    )
         render_start = time.perf_counter()
         result.annotated_image = render_inspection(processing_bgr, result)
         if result.appearance_estimate is not None:

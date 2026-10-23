@@ -346,7 +346,9 @@ class CropIdentityService:
             normalized, None, None, SegmentationSettings(),
             min_area_mm2=0.0, min_area_px=350.0,
         )
-        if segmentation.background_busy or len(segmentation.objects) != 1:
+        # The busy flag guards millimetre grading; for an appearance ratio a
+        # single clean, edge-free, convex-enough object is the real gate.
+        if len(segmentation.objects) != 1:
             return None
         obj = segmentation.objects[0]
         if obj.touches_edge or "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags:
