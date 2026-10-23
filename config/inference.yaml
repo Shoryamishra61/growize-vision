@@ -19,6 +19,9 @@ calibration:
   boundary_uncertainty_px: 1.5
   parallax_uncertainty_mm: 2.0
   default_marker_measurement_uncertainty_mm: 0.5
+  # Skeleton spurs shorter than this physical length are treated as
+  # segmentation noise when measuring curved centreline length.
+  centerline_prune_mm: 3.0
 
 segmentation:
   color_distance_min: 15.0
@@ -30,6 +33,10 @@ segmentation:
   marker_exclusion_margin_px: 10
   use_grabcut_refinement: false
   shadow_value_only_penalty: 0.55
+  # Independent cross-check: when the background-difference mask and the
+  # chroma/otsu mask disagree below this IoU, the instance is refused for
+  # review instead of measured with a possibly wrong silhouette.  0 disables.
+  ensemble_min_iou: 0.80
 
 quality:
   blur_min: 38.0
@@ -55,3 +62,9 @@ exports:
 demo:
   enabled_by_default: false
   banner: "DEMO THRESHOLDS ACTIVE - engineering demonstration only; not ARL-approved grade policy."
+
+species:
+  # When the classifier disagrees with the operator's crop choice at or above
+  # this confidence, the grade is refused for review instead of warned only.
+  # 0 disables the refusal (mismatch stays a warning).
+  mismatch_refusal_confidence: 0.85

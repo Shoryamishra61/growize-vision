@@ -9,6 +9,7 @@ import pytest
 from growize_vision.domain import (
     GradePolicy,
     PhysicalMeasurement,
+    SizeBand,
     SizeClass,
     Status,
 )
@@ -124,7 +125,7 @@ def test_null_threshold_refuses_even_with_a_measurement() -> None:
     decision = evaluate_measurement(measurement(70.0), policy(threshold=None), "calib")
     assert decision.status is Status.POLICY_REQUIRED
     assert decision.size_class is None
-    assert "NO_APPROVED_THRESHOLD" in decision.reasons[0]
+    assert "NO_THRESHOLD_POLICY" in decision.reasons[0]
 
 
 def test_metric_mismatch_refuses() -> None:
@@ -200,3 +201,84 @@ def test_invalid_comparator_refuses() -> None:
     )
     assert decision.status is Status.POLICY_REQUIRED
     assert "UNSUPPORTED_COMPARATOR" in decision.reasons[0]
+
+
+def band_policy(bands, *, guard: float = 0.5, demo: bool = False) -> GradePolicy:
+    return GradePolicy(
+        crop_key="potato",
+        crop_name="Potato",
+        physical_unit="single_tuber",
+        metric="min_area_rect_short_mm",
+        metric_description="test",
+        threshold_mm=None,
+        guard_band_mm=guard,
+        policy_version="test/demo" if demo else "test",
+        approval_status="ASSESSMENT_DEMO_ONLY" if demo else "APPROVED_SOURCE",
+        demo=demo,
+        bands=tuple(bands),
+    )
+
+
+THREE_BANDS = (
+    SizeBand(name="small", min_mm=0.0),
+    SizeBand(name="medium", min_mm=45.0),
+    SizeBand(name="large", min_mm=65.0),
+)
+
+
+def test_band_middle_grade_accepts_without_binary_class() -> None:
+    decision = evaluate_measurement(measurement(55.0, 1.0), band_policy(THREE_BANDS), "cal_x")
+    assert decision.accepted
+    assert decision.status is Status.ACCEPTED
+    assert decision.band_name == "medium"
+    assert decision.size_class is None
+    assert "INTERVAL_ENTIRELY_WITHIN_BAND:medium" in decision.reasons
+
+
+def test_band_edges_map_to_small_and_big() -> None:
+    small = evaluate_measurement(measurement(35.0, 1.0), band_policy(THREE_BANDS), "cal_x")
+    large = evaluate_measurement(measurement(80.0, 1.0), band_policy(THREE_BANDS), "cal_x")
+    assert small.size_class is SizeClass.SMALL and small.band_name == "small"
+    assert large.size_class is SizeClass.BIG and large.band_name == "large"
+
+
+def test_band_interval_crossing_edge_is_reviewed() -> None:
+    # 66 +/- 2 crosses the 65 mm large edge after the 0.5 mm guard band.
+    decision = evaluate_measurement(measurement(66.0, 2.0), band_policy(THREE_BANDS), "cal_x")
+    assert decision.status is Status.REVIEW_BORDERLINE
+    assert decision.band_name is None
+    assert "UNCERTAINTY_OR_GUARD_BAND_CROSSES_BAND_EDGE" in decision.reasons
+    assert any("CROSSES_BAND_EDGE" in reason for reason in decision.reasons)
+
+
+def test_value_inside_band_guard_is_reviewed() -> None:
+    decision = evaluate_measurement(measurement(65.2, 0.1), band_policy(THREE_BANDS), "cal_x")
+    assert decision.status is Status.REVIEW_BORDERLINE
+    assert "VALUE_INSIDE_BAND_GUARD" in " ".join(decision.reasons)
+
+
+def test_two_bands_reproduce_binary_rule() -> None:
+    two = (SizeBand(name="small", min_mm=0.0), SizeBand(name="big", min_mm=60.0))
+    big = evaluate_measurement(measurement(70.0, 1.0), band_policy(two), "cal_x")
+    small = evaluate_measurement(measurement(50.0, 1.0), band_policy(two), "cal_x")
+    assert big.size_class is SizeClass.BIG and big.band_name == "big"
+    assert small.size_class is SizeClass.SMALL and small.band_name == "small"
+    borderline = evaluate_measurement(measurement(60.0, 1.0), band_policy(two), "cal_x")
+    assert borderline.status is Status.REVIEW_BORDERLINE
+
+
+def test_bands_satisfy_policy_without_binary_threshold() -> None:
+    decision = evaluate_measurement(measurement(55.0, 1.0), band_policy(THREE_BANDS), "cal_x")
+    assert decision.status is Status.ACCEPTED
+    decision = evaluate_measurement(
+        measurement(55.0, 1.0), policy(threshold=None), "cal_x"
+    )
+    assert decision.status is Status.POLICY_REQUIRED
+
+
+def test_demo_bands_carry_disclaimer() -> None:
+    decision = evaluate_measurement(
+        measurement(55.0, 1.0), band_policy(THREE_BANDS, demo=True), "cal_x"
+    )
+    assert "ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED" in decision.reasons
+    assert decision.warning and "DEMO BANDS" in decision.warning

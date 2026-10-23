@@ -17,8 +17,8 @@ from growize_vision.media import load_image_file
 DEMO_CASES = [
     ("potato_small_synthetic.png", "potato", Status.ACCEPTED, SizeClass.SMALL, 35.079),
     ("potato_big_synthetic.png", "potato", Status.ACCEPTED, SizeClass.BIG, 72.131),
-    ("okra_small_synthetic.png", "okra", Status.ACCEPTED, SizeClass.SMALL, 81.997),
-    ("okra_big_synthetic.png", "okra", Status.ACCEPTED, SizeClass.BIG, 142.257),
+    ("okra_small_synthetic.png", "okra", Status.ACCEPTED, SizeClass.SMALL, 83.635),
+    ("okra_big_synthetic.png", "okra", Status.ACCEPTED, SizeClass.BIG, 148.749),
     ("no_marker_synthetic.png", "potato", Status.CALIBRATION_REQUIRED, None, None),
     ("empty_mat_synthetic.png", "potato", Status.NO_OBJECT, None, None),
     ("blurred_synthetic.png", "potato", Status.LOW_IMAGE_QUALITY, None, None),
@@ -67,9 +67,11 @@ def test_synthetic_fixtures_follow_the_contract(
         assert all(instance.measurement is None for instance in result.instances)
 
 
-def test_strict_mode_withholds_measurement_and_grade(service, demo_dir) -> None:
+def test_strict_mode_withholds_measurement_when_no_policy_exists(service, demo_dir) -> None:
+    # Coriander has no defensible single size definition: strict mode refuses
+    # rather than guessing, even though other crops now carry published refs.
     result = inspect_demo(
-        service, demo_dir, "potato_big_synthetic.png", "potato", demo=False
+        service, demo_dir, "potato_big_synthetic.png", "coriander", demo=False
     )
     assert result.status is Status.POLICY_REQUIRED
     assert result.size_class is None
@@ -78,7 +80,21 @@ def test_strict_mode_withholds_measurement_and_grade(service, demo_dir) -> None:
     assert result.policy.threshold_mm is None
     assert result.instances
     assert result.instances[0].measurement is None
-    assert "NO_APPROVED_THRESHOLD" in result.reasons[0]
+    assert "NO_THRESHOLD_POLICY" in result.reasons[0]
+
+
+def test_strict_mode_grades_with_published_reference_and_disclaimer(service, demo_dir) -> None:
+    result = inspect_demo(
+        service, demo_dir, "potato_big_synthetic.png", "potato", demo=False
+    )
+    assert result.status is Status.ACCEPTED
+    assert result.size_band == "large"
+    assert result.policy is not None
+    assert result.policy.approval_status == "PUBLISHED_REFERENCE"
+    assert result.policy.provenance is not None
+    assert "PUBLISHED_REFERENCE_NOT_POPULATION_VALIDATED" in result.reasons
+    warning = " ".join(result.warnings)
+    assert "not validated on the local population" in warning
 
 
 def test_missing_marker_never_produces_millimetres(service, demo_dir) -> None:
@@ -226,8 +242,96 @@ def test_measurement_is_finite_and_policy_metric_matches(service, demo_dir) -> N
     result = inspect_demo(service, demo_dir, "okra_big_synthetic.png", "okra")
     measurement = result.instances[0].measurement
     assert measurement is not None
-    assert measurement.metric == "min_area_rect_long_mm"
+    assert measurement.metric == "centerline_length_mm"
     assert math.isfinite(measurement.value_mm)
     assert math.isfinite(measurement.uncertainty_mm)
     assert measurement.unit == "mm"
     assert measurement.calibration_id == result.calibration.calibration_id
+
+
+def test_demo_bands_are_reported_with_binary_class(service, demo_dir) -> None:
+    result = inspect_demo(service, demo_dir, "potato_big_synthetic.png", "potato")
+    assert result.status is Status.ACCEPTED
+    assert result.size_band == "large"
+    assert result.size_class is SizeClass.BIG
+    assert any(reason.startswith("SIZE_BAND:") for reason in result.reasons)
+    payload = result.to_dict()
+    assert payload["size_band"] == "large" and payload["accepted"] is True
+
+
+def test_segmentation_disagreement_refuses_measurement(monkeypatch, demo_dir) -> None:
+    """When the independent chroma mask collapses, no measurement is trusted."""
+    import numpy as np
+
+    import growize_vision.segmentation_cv as segmod
+    from growize_vision.inference import InferenceService
+
+    monkeypatch.setattr(
+        segmod, "_chroma_candidate", lambda image, lab: np.zeros(image.shape[:2], np.uint8)
+    )
+    local = InferenceService()
+    result = inspect_demo(local, demo_dir, "potato_big_synthetic.png", "potato")
+    assert result.status is Status.REVIEW_BORDERLINE
+    assert result.size_class is None
+    assert all(instance.measurement is None for instance in result.instances)
+    assert any("SEGMENTATION_DISAGREEMENT" in reason for reason in result.reasons)
+    assert any("SEGMENTATION_DISAGREEMENT" in warning for warning in result.warnings)
+
+
+def test_species_mismatch_cross_check_warns_but_keeps_operator_policy(demo_dir) -> None:
+    """A low-confidence classifier/operator disagreement stays advisory."""
+    from growize_vision.crop_identity import SpeciesPrediction
+    from growize_vision.inference import InferenceService
+
+    class FakeIdentity:
+        is_classifier_available = True
+
+        @staticmethod
+        def detect_produce_presence(frame):
+            return True, "FAKE"
+
+        @staticmethod
+        def predict_species(frame):
+            return SpeciesPrediction(
+                species_key="okra",
+                species_name="Okra",
+                confidence=0.70,
+                all_probabilities={"Okra": 0.70},
+            )
+
+    local = InferenceService(identity_service=FakeIdentity())
+    result = inspect_demo(local, demo_dir, "potato_big_synthetic.png", "potato")
+    mismatch = [w for w in result.warnings if w.startswith("SPECIES_MISMATCH_CANDIDATE")]
+    assert mismatch and "okra" in mismatch[0] and "potato" in mismatch[0]
+    # The operator selection still drives the policy and the grade.
+    assert result.policy is not None and result.policy.crop_key == "potato"
+    assert result.status is Status.ACCEPTED and result.size_class is SizeClass.BIG
+
+
+def test_high_confidence_species_mismatch_refuses_grade(demo_dir) -> None:
+    """Above the refusal knob, a mismatch withholds the grade entirely."""
+    from growize_vision.crop_identity import SpeciesPrediction
+    from growize_vision.inference import InferenceService
+
+    class FakeIdentity:
+        is_classifier_available = True
+
+        @staticmethod
+        def detect_produce_presence(frame):
+            return True, "FAKE"
+
+        @staticmethod
+        def predict_species(frame):
+            return SpeciesPrediction(
+                species_key="okra",
+                species_name="Okra",
+                confidence=0.93,
+                all_probabilities={"Okra": 0.93},
+            )
+
+    local = InferenceService(identity_service=FakeIdentity())
+    result = inspect_demo(local, demo_dir, "potato_big_synthetic.png", "potato")
+    assert result.status is Status.REVIEW_BORDERLINE
+    assert result.size_class is None and result.size_band is None
+    assert all(instance.measurement is None for instance in result.instances)
+    assert any("withheld for review" in reason for reason in result.reasons)

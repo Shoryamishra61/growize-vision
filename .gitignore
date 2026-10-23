@@ -66,3 +66,12 @@ outputs/
 # Operating System files
 .DS_Store
 Thumbs.db
+
+# Heavy derived artifacts kept out of git; evidence summaries stay tracked
+reports/**/cache/
+reports/**/*.pt
+reports/**/*.pkl
+reports/**/*.npz
+reports/**/*.mp4
+reports/**/manifest.jsonl
+reports/**/inventory.jsonl

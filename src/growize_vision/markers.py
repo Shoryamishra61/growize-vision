@@ -23,6 +23,11 @@ class MarkerError(ValueError):
 
 
 def get_aruco_dictionary(name: str) -> cv2.aruco.Dictionary:
+    if name == "LSID_BEANS_3X3":
+        # Published LSID-Beans marker identity, not a generated training image.
+        # doi:10.1016/j.dib.2025.111328, section 4.2; physical side is supplied separately.
+        bits = np.array([[1, 0, 1], [1, 0, 0], [1, 1, 1]], dtype=np.uint8)
+        return cv2.aruco.Dictionary(cv2.aruco.Dictionary_getByteListFromBits(bits), 3, 0)
     enum = getattr(cv2.aruco, name, None)
     if enum is None:
         available = sorted(

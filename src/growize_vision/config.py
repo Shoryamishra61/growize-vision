@@ -14,7 +14,7 @@ from typing import Any
 
 import yaml
 
-from .domain import CropOntology, GradePolicy
+from .domain import CropOntology, GradePolicy, SizeBand
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_POLICY_PATH = PROJECT_ROOT / "config" / "grade_rules.yaml"
@@ -37,6 +37,7 @@ class CalibrationSettings:
     boundary_uncertainty_px: float = 1.5
     parallax_uncertainty_mm: float = 2.0
     default_marker_measurement_uncertainty_mm: float = 0.5
+    centerline_prune_mm: float = 3.0
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,7 @@ class SegmentationSettings:
     marker_exclusion_margin_px: int = 10
     use_grabcut_refinement: bool = False
     shadow_value_only_penalty: float = 0.55
+    ensemble_min_iou: float = 0.80
 
 
 @dataclass(frozen=True)
@@ -89,6 +91,7 @@ class InferenceSettings:
     demo_banner: str = (
         "Demonstration cutoffs only; no ARL-approved thresholds supplied."
     )
+    species_mismatch_refusal_confidence: float = 0.85
     source_path: str | None = None
     config_sha256: str = ""
 
@@ -147,7 +150,8 @@ class PolicyRegistry:
         crop = self.crops[canonical]
         if demo:
             threshold = crop.get("demo_threshold_mm")
-            if threshold is not None:
+            demo_bands = _parse_bands(canonical, crop.get("demo_size_bands"), "demo_size_bands")
+            if threshold is not None or demo_bands is not None:
                 approval = "ASSESSMENT_DEMO_ONLY"
                 source = (
                     "Engineering demonstration cut-off stored in grade_rules.yaml; "
@@ -162,14 +166,24 @@ class PolicyRegistry:
                 policy_version = self.version
         else:
             threshold = crop.get("threshold_mm")
+            demo_bands = None
             approval = (
-                "APPROVED_SOURCE" if threshold is not None else "NOT_PROVIDED"
+                str(crop.get("approval_status", "APPROVED_SOURCE")) if threshold is not None else "NOT_PROVIDED"
             )
             source = str(crop.get("source", "No ARL-approved threshold supplied."))
             policy_version = self.version
 
         if threshold is not None:
             threshold = _finite_positive(threshold, f"{canonical}.threshold_mm")
+        bands = (
+            demo_bands
+            if demo
+            else _parse_bands(canonical, crop.get("size_bands"), "size_bands")
+        )
+        provenance = crop.get("threshold_provenance")
+        provenance = dict(provenance) if isinstance(provenance, dict) else None
+        if threshold is not None and not demo and provenance:
+            source = str(provenance.get("source") or source)
 
         return GradePolicy(
             crop_key=canonical,
@@ -183,9 +197,15 @@ class PolicyRegistry:
             policy_version=policy_version,
             approval_status=approval,
             source=source,
-            demo=bool(demo and threshold is not None),
+            demo=bool(demo and (threshold is not None or demo_bands is not None)),
             min_visible_fraction=float(crop.get("min_visible_fraction", 0.98)),
+            bands=bands,
+            provenance=provenance,
         )
+
+    def canonical_key(self, crop_key: str) -> str:
+        """Public alias resolution for cross-checks against classifier output."""
+        return self._canonical_key(crop_key)
 
     def _lookup(self, crop_key: str) -> dict[str, Any]:
         canonical = self._canonical_key(crop_key)
@@ -204,6 +224,50 @@ class PolicyRegistry:
         raise ConfigError(
             f"Unknown crop policy '{crop_key}'. Supported: {', '.join(self.crops)}"
         )
+
+
+def _parse_bands(
+    crop_key: str, raw: Any, field_name: str
+) -> tuple[SizeBand, ...] | None:
+    """Validate one ordered size-band table: names unique, edges ascending."""
+    if raw is None:
+        return None
+    if not isinstance(raw, list) or len(raw) < 2:
+        raise ConfigError(
+            f"crop {crop_key} {field_name} must be a list of at least two bands."
+        )
+    bands: list[SizeBand] = []
+    seen_names: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ConfigError(f"crop {crop_key} {field_name} entries must be mappings.")
+        name = str(entry.get("name", "")).strip()
+        if not name or name.lower() in seen_names:
+            raise ConfigError(
+                f"crop {crop_key} {field_name} band names must be non-empty and unique."
+            )
+        seen_names.add(name.lower())
+        try:
+            min_mm = float(entry.get("min_mm"))
+        except (TypeError, ValueError) as exc:
+            raise ConfigError(
+                f"crop {crop_key} {field_name} band {name!r} needs numeric min_mm."
+            ) from exc
+        if not math.isfinite(min_mm) or min_mm < 0:
+            raise ConfigError(
+                f"crop {crop_key} {field_name} band {name!r} min_mm must be finite >= 0."
+            )
+        bands.append(SizeBand(name=name, min_mm=min_mm))
+    if bands[0].min_mm != 0.0:
+        raise ConfigError(
+            f"crop {crop_key} {field_name} first band must start at min_mm: 0."
+        )
+    edges = [band.min_mm for band in bands[1:]]
+    if any(later <= earlier for earlier, later in zip(edges, edges[1:])):
+        raise ConfigError(
+            f"crop {crop_key} {field_name} band edges must be strictly ascending."
+        )
+    return tuple(bands)
 
 
 def _finite_positive(value: Any, name: str) -> float:
@@ -248,6 +312,7 @@ def load_policies(path: Path | str = DEFAULT_POLICY_PATH) -> PolicyRegistry:
             "min_area_rect_short_mm",
             "min_area_rect_long_mm",
             "max_feret_mm",
+            "centerline_length_mm",
             "projected_area_cm2",
         }:
             raise ConfigError(f"crop {key} has unsupported metric {metric!r}.")
@@ -255,6 +320,21 @@ def load_policies(path: Path | str = DEFAULT_POLICY_PATH) -> PolicyRegistry:
             value = crop.get(field_name)
             if value is not None:
                 _finite_positive(value, f"{key}.{field_name}")
+        if crop.get("threshold_mm") is not None:
+            # Doctrine gate: a strict-mode threshold must never exist without
+            # a citable provenance block.
+            provenance = crop.get("threshold_provenance")
+            if (
+                not isinstance(provenance, dict)
+                or not str(provenance.get("source", "")).strip()
+                or not str(provenance.get("status", "")).strip()
+            ):
+                raise ConfigError(
+                    f"crop {key} sets threshold_mm without a complete "
+                    "threshold_provenance block (status and source are required)."
+                )
+        _parse_bands(key, crop.get("size_bands"), "size_bands")
+        _parse_bands(key, crop.get("demo_size_bands"), "demo_size_bands")
         comparator = crop.get("comparator", "greater_than_or_equal")
         if comparator not in {
             "greater_than_or_equal",
@@ -306,6 +386,7 @@ def load_inference_settings(
             default_marker_measurement_uncertainty_mm=float(
                 cal.get("default_marker_measurement_uncertainty_mm", 0.5)
             ),
+            centerline_prune_mm=float(cal.get("centerline_prune_mm", 3.0)),
         ),
         segmentation=SegmentationSettings(
             color_distance_min=float(seg.get("color_distance_min", 15.0)),
@@ -317,6 +398,7 @@ def load_inference_settings(
             marker_exclusion_margin_px=int(seg.get("marker_exclusion_margin_px", 10)),
             use_grabcut_refinement=bool(seg.get("use_grabcut_refinement", False)),
             shadow_value_only_penalty=float(seg.get("shadow_value_only_penalty", 0.55)),
+            ensemble_min_iou=float(seg.get("ensemble_min_iou", 0.80)),
         ),
         quality=QualitySettings(
             blur_min=float(qual.get("blur_min", 38.0)),
@@ -342,6 +424,9 @@ def load_inference_settings(
                 "DEMO THRESHOLDS ACTIVE - engineering demonstration only.",
             )
         ),
+        species_mismatch_refusal_confidence=float(
+            (data.get("species", {}) or {}).get("mismatch_refusal_confidence", 0.85)
+        ),
         source_path=str(path),
         config_sha256=digest,
     )
@@ -358,6 +443,7 @@ def _validate_inference_settings(settings: InferenceSettings) -> None:
         "min_object_area_px": settings.min_object_area_px,
         "calibration.min_marker_side_px": settings.calibration.min_marker_side_px,
         "calibration.max_side_length_ratio": settings.calibration.max_side_length_ratio,
+        "calibration.centerline_prune_mm": settings.calibration.centerline_prune_mm,
         "segmentation.color_distance_min": settings.segmentation.color_distance_min,
         "segmentation.morph_kernel": settings.segmentation.morph_kernel,
         "quality.blur_min": settings.quality.blur_min,
@@ -372,6 +458,8 @@ def _validate_inference_settings(settings: InferenceSettings) -> None:
         "quality.max_glare_fraction": settings.quality.max_glare_fraction,
         "segmentation.min_component_fraction": settings.segmentation.min_component_fraction,
         "segmentation.max_component_fraction": settings.segmentation.max_component_fraction,
+        "segmentation.ensemble_min_iou": settings.segmentation.ensemble_min_iou,
+        "species.mismatch_refusal_confidence": settings.species_mismatch_refusal_confidence,
     }.items():
         if not math.isfinite(float(value)) or float(value) < 0 or float(value) > 1:
             raise ConfigError(f"{key} must be between 0 and 1, got {value!r}")

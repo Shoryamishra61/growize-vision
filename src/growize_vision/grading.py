@@ -8,6 +8,7 @@ from .domain import (
     GradeDecision,
     GradePolicy,
     PhysicalMeasurement,
+    SizeBand,
     SizeClass,
     Status,
 )
@@ -18,6 +19,112 @@ COMPARATORS = {
     "less_than",
     "less_than_or_equal",
 }
+
+
+def _provenance_disclaimer(policy: GradePolicy) -> tuple[list[str], str | None]:
+    """Reason/warning suffix for the policy's evidence tier."""
+    if policy.demo:
+        return (
+            ["ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED"],
+            "DEMO CUT-OFF ONLY: this is not an ARL/Growize-approved grade.",
+        )
+    if policy.approval_status == "EMPIRICAL_REFERENCE":
+        return (
+            ["EMPIRICAL_REFERENCE_AVERAGE_NOT_POPULATION_STANDARD"],
+            "Sample reference only; not a validated population standard.",
+        )
+    if policy.approval_status == "PUBLISHED_REFERENCE":
+        return (
+            ["PUBLISHED_REFERENCE_NOT_POPULATION_VALIDATED"],
+            "Published-reference cut-off (standard, trade practice, or research "
+            "data); not validated on the local population. Confirm with the "
+            "buyer or an approved standard before commercial use.",
+        )
+    return ["APPROVED_POLICY"], None
+
+
+def _evaluate_bands(
+    measurement: PhysicalMeasurement,
+    policy: GradePolicy,
+    calibration_id: str | None,
+) -> GradeDecision:
+    """Ordered size-band rule: interval must sit entirely inside one band.
+
+    Band i covers ``[min_mm_i, min_mm_{i+1})``; the first band starts at 0
+    and the last is unbounded above.  The measurement interval (with the
+    guard band applied to each edge) must not cross any band boundary, so a
+    MEDIUM/LARGE style grade carries the same refusal discipline as the
+    binary rule.  Two bands reproduce the binary cut-off exactly, with
+    SMALL = first band and BIG = last band.
+    """
+    bands = policy.bands or ()
+    guard = max(0.0, float(policy.guard_band_mm))
+    lower = float(measurement.lower_mm)
+    upper = float(measurement.upper_mm)
+    value = float(measurement.value_mm)
+    for index, band in enumerate(bands):
+        lower_ok = index == 0 or lower >= band.min_mm + guard
+        upper_edge = bands[index + 1].min_mm if index + 1 < len(bands) else None
+        upper_ok = upper_edge is None or upper < upper_edge - guard
+        if not (lower_ok and upper_ok):
+            continue
+        size_class = (
+            SizeClass.SMALL if index == 0
+            else SizeClass.BIG if index == len(bands) - 1
+            else None
+        )
+        disclaimer_reasons, disclaimer_warning = _provenance_disclaimer(policy)
+        reasons = [f"INTERVAL_ENTIRELY_WITHIN_BAND:{band.name}", *disclaimer_reasons]
+        warning = (
+            "DEMO BANDS ONLY: these cut-offs are not ARL/Growize-approved grades."
+            if policy.demo
+            else disclaimer_warning
+        )
+        return GradeDecision(
+            size_class=size_class,
+            status=Status.ACCEPTED,
+            reasons=reasons,
+            policy=policy,
+            measurement=measurement,
+            threshold_mm=policy.threshold_mm,
+            comparator=policy.comparator,
+            policy_version=policy.policy_version,
+            calibration_id=calibration_id,
+            warning=warning,
+            band_name=band.name,
+        )
+
+    edges = [band.min_mm for band in bands[1:]] or [0.0]
+    nearest = min(edges, key=lambda edge: abs(value - edge))
+    reasons = ["UNCERTAINTY_OR_GUARD_BAND_CROSSES_BAND_EDGE"]
+    if abs(value - nearest) <= guard:
+        reasons.append(
+            "VALUE_INSIDE_BAND_GUARD: the measured value sits in the deliberate "
+            "no-decision band around a grade edge; route to manual review."
+        )
+    else:
+        reasons.append(
+            "MEASUREMENT_INTERVAL_CROSSES_BAND_EDGE: the uncertainty interval "
+            "reaches a grade boundary; recapture flatter and closer with the "
+            "marker fully visible to narrow the interval."
+        )
+    return GradeDecision(
+        size_class=None,
+        status=Status.REVIEW_BORDERLINE,
+        reasons=reasons,
+        policy=policy,
+        measurement=measurement,
+        threshold_mm=policy.threshold_mm,
+        comparator=policy.comparator,
+        policy_version=policy.policy_version,
+        calibration_id=calibration_id,
+        warning=(
+            "DEMO BANDS ONLY: this review state is still a safe refusal."
+            if policy.demo
+            else "No automatic size grade; recapture or request manual review."
+        ),
+        band_name=None,
+    )
 
 
 def evaluate_measurement(
@@ -43,14 +150,14 @@ def evaluate_measurement(
             reasons=["NO_CROP_POLICY: select an operator crop policy."],
             calibration_id=calibration_id,
         )
-    if policy.threshold_mm is None:
+    if policy.threshold_mm is None and not policy.bands:
         return GradeDecision(
             size_class=None,
             status=Status.POLICY_REQUIRED,
             reasons=[
-                "NO_APPROVED_THRESHOLD: ARL/Growize has not supplied a threshold "
-                "for this crop. Enable demo mode only for an explicitly labelled "
-                "engineering demonstration."
+                "NO_THRESHOLD_POLICY: no ARL-approved, published-reference, or "
+                "demo threshold exists for this crop. Physical grading is "
+                "withheld rather than guessed."
             ],
             policy=policy,
             threshold_mm=None,
@@ -94,14 +201,15 @@ def evaluate_measurement(
             policy_version=policy.policy_version,
             calibration_id=calibration_id,
         )
-    values = (
+    values: tuple[float, ...] = (
         measurement.value_mm,
         measurement.uncertainty_mm,
         measurement.lower_mm,
         measurement.upper_mm,
-        policy.threshold_mm,
         policy.guard_band_mm,
     )
+    if policy.threshold_mm is not None:
+        values += (policy.threshold_mm,)
     if not all(math.isfinite(float(v)) for v in values):
         return GradeDecision(
             size_class=None,
@@ -126,6 +234,9 @@ def evaluate_measurement(
             policy_version=policy.policy_version,
             calibration_id=calibration_id,
         )
+
+    if policy.bands and len(policy.bands) >= 2:
+        return _evaluate_bands(measurement, policy, calibration_id)
     threshold = float(policy.threshold_mm)
     guard = max(0.0, float(policy.guard_band_mm))
     lower = float(measurement.lower_mm)
@@ -167,6 +278,19 @@ def evaluate_measurement(
     if not accepted:
         size_class = None
         reasons.append("UNCERTAINTY_OR_GUARD_BAND_CROSSES_THRESHOLD")
+        value = float(measurement.value_mm)
+        if threshold - guard <= value <= threshold + guard:
+            reasons.append(
+                "VALUE_INSIDE_GUARD_BAND: the measured value sits in the "
+                "deliberate no-decision band around the threshold; route to "
+                "manual review."
+            )
+        else:
+            reasons.append(
+                "MEASUREMENT_INTERVAL_CROSSES_THRESHOLD: the uncertainty "
+                "interval reaches the cut-off; recapture flatter and closer "
+                "with the marker fully visible to narrow the interval."
+            )
         return GradeDecision(
             size_class=None,
             status=Status.REVIEW_BORDERLINE,
@@ -184,10 +308,8 @@ def evaluate_measurement(
             "still a safe refusal.",
         )
 
-    if policy.demo:
-        reasons.append("ASSESSMENT_DEMO_POLICY_NOT_ARL_APPROVED")
-    else:
-        reasons.append("APPROVED_POLICY")
+    disclaimer_reasons, disclaimer_warning = _provenance_disclaimer(policy)
+    reasons.extend(disclaimer_reasons)
     return GradeDecision(
         size_class=size_class,
         status=Status.ACCEPTED,
@@ -198,9 +320,5 @@ def evaluate_measurement(
         comparator=comparator,
         policy_version=policy.policy_version,
         calibration_id=calibration_id,
-        warning=(
-            "DEMO CUT-OFF ONLY: this is not an ARL/Growize-approved grade."
-            if policy.demo
-            else None
-        ),
+        warning=disclaimer_warning,
     )

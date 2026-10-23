@@ -144,7 +144,12 @@ class ImageQuality:
 
 @dataclass
 class PhysicalMeasurement:
-    """A projected-plane measurement, never a volume or a mass estimate."""
+    """A projected-plane measurement.
+
+    Never a validated 3-D volume or a mass estimate: any ``volume_proxy``
+    block is an explicitly-labelled shape-model proxy that grading must
+    ignore, and ``centerline`` is diagnostic skeleton information.
+    """
 
     metric: str
     value_mm: float
@@ -156,6 +161,8 @@ class PhysicalMeasurement:
     calibration_id: str | None = None
     coverage_note: str = "engineering_error_bound_not_statistical_95pct"
     secondary: dict[str, float] = field(default_factory=dict)
+    centerline: dict[str, Any] | None = None
+    volume_proxy: dict[str, Any] | None = None
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -171,8 +178,38 @@ class PhysicalMeasurement:
             "calibration_id": self.calibration_id,
             "coverage_note": self.coverage_note,
             "secondary": {k: _round(v, 3) for k, v in self.secondary.items()},
+            "centerline": self._round_nested(self.centerline),
+            "volume_proxy": self._round_nested(self.volume_proxy),
             "warnings": list(self.warnings),
         }
+
+    @staticmethod
+    def _round_nested(block: dict[str, Any] | None) -> dict[str, Any] | None:
+        if block is None:
+            return None
+        rounded: dict[str, Any] = {}
+        for key, value in block.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                rounded[key] = _round(float(value), 3)
+            else:
+                rounded[key] = value
+        return rounded
+
+
+@dataclass(frozen=True)
+class SizeBand:
+    """One ordered size grade band: name plus inclusive lower edge in mm.
+
+    The first band's ``min_mm`` is 0; a band runs from its own ``min_mm``
+    (inclusive) up to the next band's ``min_mm`` (exclusive).  Two bands
+    reproduce the classic binary SMALL/BIG cut-off exactly.
+    """
+
+    name: str
+    min_mm: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "min_mm": _round(self.min_mm, 3)}
 
 
 @dataclass(frozen=True)
@@ -190,6 +227,8 @@ class GradePolicy:
     source: str = "not provided"
     demo: bool = False
     min_visible_fraction: float = 0.98
+    bands: tuple[SizeBand, ...] | None = None
+    provenance: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -206,6 +245,8 @@ class GradePolicy:
             "source": self.source,
             "demo": self.demo,
             "min_visible_fraction": self.min_visible_fraction,
+            "bands": [band.to_dict() for band in self.bands] if self.bands else None,
+            "provenance": dict(self.provenance) if self.provenance else None,
         }
 
 
@@ -221,17 +262,19 @@ class GradeDecision:
     policy_version: str | None = None
     calibration_id: str | None = None
     warning: str | None = None
+    band_name: str | None = None
 
     @property
     def accepted(self) -> bool:
-        return self.status == Status.ACCEPTED and self.size_class in (
-            SizeClass.SMALL,
-            SizeClass.BIG,
+        return self.status == Status.ACCEPTED and (
+            self.size_class in (SizeClass.SMALL, SizeClass.BIG)
+            or self.band_name is not None
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "size_class": self.size_class.value if self.size_class else None,
+            "size_band": self.band_name,
             "status": self.status.value,
             "reasons": list(self.reasons),
             "measurement": self.measurement.to_dict() if self.measurement else None,
@@ -282,6 +325,7 @@ class InspectionResult:
     context: MediaContext
     status: Status
     size_class: SizeClass | None = None
+    size_band: str | None = None
     instances: list[InstanceObservation] = field(default_factory=list)
     calibration: Calibration | None = None
     quality: ImageQuality | None = None
@@ -323,8 +367,12 @@ class InspectionResult:
             },
             "status": self.status.value,
             "size_class": self.size_class.value if self.size_class else None,
+            "size_band": self.size_band,
             "accepted": self.status == Status.ACCEPTED
-            and self.size_class in (SizeClass.SMALL, SizeClass.BIG),
+            and (
+                self.size_class in (SizeClass.SMALL, SizeClass.BIG)
+                or self.size_band is not None
+            ),
             "instances": [i.to_dict() for i in self.instances]
             if include_instances
             else [],

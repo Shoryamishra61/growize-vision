@@ -24,6 +24,7 @@ from .domain import (
     InstanceObservation,
     MediaContext,
     SizeClass,
+    SourceType,
     Status,
 )
 from .geometry import MetrologyError, measure_contour
@@ -52,6 +53,7 @@ class InferenceRequest:
     segmentation_mode: str = "opencv_baseline"
     notes: str | None = None
     allow_appearance_estimate: bool = False
+    cross_check_species: bool | None = None  # default: on for still-image sources
 
 
 @dataclass
@@ -85,6 +87,7 @@ class InferenceService:
         started = time.perf_counter()
         timings: dict[str, float] = {}
         warnings: list[str] = []
+        species_refusal: str | None = None
         result_id = f"insp_{hashlib.sha1(f'{time.time_ns()}|{context.source_id}'.encode()).hexdigest()[:14]}"
 
         try:
@@ -229,6 +232,27 @@ class InferenceService:
                 warnings.append(policy_error)
         if policy and policy.demo:
             warnings.append(self.settings.demo_banner)
+        elif policy and policy.approval_status == "PUBLISHED_REFERENCE":
+            warnings.append(
+                "PUBLISHED_REFERENCE threshold: literature/market reference, "
+                "not validated on the local population."
+            )
+
+        if (
+            request.crop_key
+            and len(segmentation.objects) == 1
+            and (
+                request.cross_check_species
+                if request.cross_check_species is not None
+                else context.source_type == SourceType.IMAGE
+            )
+        ):
+            mismatch = self._cross_check_species(input_bgr, request.crop_key)
+            if mismatch:
+                message, refuse = mismatch
+                warnings.append(message)
+                if refuse:
+                    species_refusal = message
 
         instances = self._build_instances(
             processing_bgr=processing_bgr,
@@ -239,6 +263,7 @@ class InferenceService:
             policy_error=policy_error,
             request=request,
             warnings=warnings,
+            species_refusal=species_refusal,
         )
 
         top_status, top_size, top_reasons = self._summarise(
@@ -249,6 +274,11 @@ class InferenceService:
             policy=policy,
             policy_error=policy_error,
         )
+        top_band: str | None = None
+        if len(instances) == 1 and instances[0].decision and instances[0].decision.band_name:
+            top_band = instances[0].decision.band_name
+            if top_status is Status.ACCEPTED:
+                top_reasons.append(f"SIZE_BAND:{top_band}")
         if not instances:
             warnings.append(
                 "No object was accepted as a foreground vegetable instance."
@@ -259,6 +289,7 @@ class InferenceService:
             context=context,
             status=top_status,
             size_class=top_size,
+            size_band=top_band,
             instances=instances,
             calibration=calibration,
             quality=quality,
@@ -309,6 +340,7 @@ class InferenceService:
         policy_error: str | None,
         request: InferenceRequest,
         warnings: list[str],
+        species_refusal: str | None = None,
     ) -> list[InstanceObservation]:
         instances: list[InstanceObservation] = []
         for index, obj in enumerate(segmentation.objects, start=1):
@@ -402,6 +434,29 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
+            elif "SEGMENTATION_DISAGREEMENT" in obj.flags:
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.REVIEW_BORDERLINE,
+                    reasons=[
+                        "SEGMENTATION_DISAGREEMENT: two independent segmentation "
+                        "methods produced different silhouettes; lighting or "
+                        "background may be non-standard. Recapture on the matte "
+                        "mat or grade this item manually."
+                    ],
+                    policy=policy,
+                    policy_version=getattr(policy, "policy_version", None),
+                    calibration_id=calibration.calibration_id,
+                )
+            elif species_refusal:
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.REVIEW_BORDERLINE,
+                    reasons=[species_refusal],
+                    policy=policy,
+                    policy_version=getattr(policy, "policy_version", None),
+                    calibration_id=calibration.calibration_id,
+                )
             elif policy is None or policy_error:
                 instance.decision = GradeDecision(
                     size_class=None,
@@ -411,11 +466,12 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif policy.threshold_mm is None and not policy.demo:
+            elif policy.threshold_mm is None and not policy.bands and not policy.demo:
                 instance.decision = evaluate_measurement(None, policy, calibration.calibration_id)
                 instance.decision.reasons = [
-                    "NO_APPROVED_THRESHOLD: no ARL/Growize threshold has been supplied "
-                    "for this crop. Physical measurement is withheld in strict mode."
+                    "NO_THRESHOLD_POLICY: no ARL-approved or published-reference "
+                    "threshold exists for this crop. Physical measurement is "
+                    "withheld in strict mode."
                 ]
             else:
                 try:
@@ -488,13 +544,14 @@ class InferenceService:
                 None,
                 [policy_error or "Select an explicit crop policy."],
             )
-        if policy.threshold_mm is None and not policy.demo:
+        if policy.threshold_mm is None and not policy.bands and not policy.demo:
             return (
                 Status.POLICY_REQUIRED,
                 None,
                 [
-                    "NO_APPROVED_THRESHOLD: physical measurements are withheld until an "
-                    "ARL/Growize policy is supplied, or demo mode is explicitly enabled."
+                    "NO_THRESHOLD_POLICY: physical measurements are withheld until an "
+                    "approved or published-reference policy exists, or demo mode is "
+                    "explicitly enabled."
                 ],
             )
         if len(instances) > 1:
@@ -522,6 +579,43 @@ class InferenceService:
         if decision.status == Status.ACCEPTED:
             return Status.ACCEPTED, decision.size_class, list(decision.reasons)
         return decision.status, None, list(decision.reasons)
+
+    def _cross_check_species(
+        self, frame: np.ndarray, crop_key: str
+    ) -> tuple[str, bool] | None:
+        """Warn — and above the configured confidence, refuse — on crop mismatch.
+
+        A low-confidence disagreement stays advisory; a high-confidence one
+        means the operator is probably applying the wrong crop's rule, so the
+        grade is withheld for review rather than emitted with the wrong
+        threshold.
+        """
+        try:
+            canonical = self.policies.canonical_key(crop_key)
+        except Exception:
+            return None
+        if self.identity_service is None:
+            from .crop_identity import CropIdentityService
+
+            self.identity_service = CropIdentityService()
+        if not getattr(self.identity_service, "is_classifier_available", False):
+            return None
+        prediction = self.identity_service.predict_species(frame)
+        if prediction is None or prediction.species_key == canonical:
+            return None
+        refusal_knob = self.settings.species_mismatch_refusal_confidence
+        refuse = bool(refusal_knob > 0 and prediction.confidence >= refusal_knob)
+        message = (
+            f"SPECIES_MISMATCH_CANDIDATE: operator selected {canonical!r} but the "
+            f"classifier suggests {prediction.species_key!r} "
+            f"(confidence {prediction.confidence:.2f}). "
+            + (
+                "Confidence meets the refusal threshold; grading is withheld for review."
+                if refuse
+                else "Verify the crop; grading currently follows the operator selection."
+            )
+        )
+        return message, refuse
 
     def _invalid_result(
         self,

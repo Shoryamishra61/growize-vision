@@ -25,6 +25,7 @@ from threadpoolctl import threadpool_limits
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from growize_vision.crop_identity import CropIdentityService  # noqa: E402
+from growize_vision.real_photos import verify_original_photo, verify_specimen_splits  # noqa: E402
 
 OUT = ROOT / "reports/species_training_v2"
 
@@ -157,7 +158,7 @@ def main() -> None:
     parser.add_argument("--run-dir", type=Path, default=OUT)
     parser.add_argument("--reuse-run", type=Path)
     parser.add_argument("--zero-validation-errors", action="store_true")
-    parser.add_argument("--augmentation-profile", choices=["basic", "full"], default="basic")
+    parser.add_argument("--augmentation-profile", choices=["none"], default="none")
     args = parser.parse_args()
     output = args.run_dir
     started = time.perf_counter()
@@ -166,6 +167,10 @@ def main() -> None:
     np.random.seed(42)
     manifest = output / "manifest.jsonl"
     rows = [json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines()]
+    eligible = [row for row in rows if row["split"] != "quarantine"]
+    verify_specimen_splits(eligible)
+    for row in eligible:
+        verify_original_photo(row, ROOT)
     groups = defaultdict(set)
     for row in rows:
         if row["split"] != "quarantine":
@@ -194,20 +199,17 @@ def main() -> None:
                   "manifest_sha256": digest(manifest), "script_sha256": digest(__file__),
                   "backbone_sha256": digest(backbone_path), "seed": 42, "device": "cpu",
                   "torch": torch.__version__, "split_counts": {s: dict(Counter(r["label"] for r in p)) for s, p in partitions.items()},
-                  "hypothesis": "Correct taxonomy, all licensed training images and grouped robustness views improve crop recognition without confidence rewriting.",
+                  "hypothesis": "Train on verified original real photographs with no generated training views.",
                   "physical_size_training": False}
     experiment["reuse_run"] = str(args.reuse_run) if args.reuse_run else None
     experiment["augmentation_profile"] = args.augmentation_profile
     experiment["embedding_cache_format"] = 2
-    if args.augmentation_profile == "full":
-        experiment["hypothesis"] = "Continuous rotation, scale and illumination views improve off-axis species recognition with unchanged data/backbone."
     experiment["validation_error_target"] = 0.0 if args.zero_validation_errors else 0.01
     incumbent_path = getattr(service, "deep_classifier_path", None)
     experiment["incumbent_checkpoint_sha256"] = digest(incumbent_path) if incumbent_path and Path(incumbent_path).exists() else "unspecified"
     (output / "experiment.json").write_text(json.dumps(experiment, indent=2), encoding="utf-8")
-    train_features = np.concatenate([extract(partitions["train"], service, "train_clean", output, reuse_dir=args.reuse_run, augmentation_profile=args.augmentation_profile),
-                                     extract(partitions["train"], service, "train_augmented", output, augmented=True, reuse_dir=args.reuse_run, augmentation_profile=args.augmentation_profile)])
-    train_labels = np.array([r["label"] for r in partitions["train"]] * 2)
+    train_features = extract(partitions["train"], service, "train_clean", output, reuse_dir=args.reuse_run, augmentation_profile="none")
+    train_labels = np.array([r["label"] for r in partitions["train"]])
     validation_features = extract(partitions["validation"], service, "validation_clean", output, reuse_dir=args.reuse_run, augmentation_profile=args.augmentation_profile)
     validation_labels = np.array([r["label"] for r in partitions["validation"]])
     runs = []

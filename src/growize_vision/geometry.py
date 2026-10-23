@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import cv2
 import numpy as np
 
+from .centerline import CenterlineResult, centerline_analysis
 from .config import CalibrationSettings
 from .domain import Calibration, PhysicalMeasurement
 
@@ -80,6 +82,63 @@ def _distance_from_marker_ratio(
     return float(np.linalg.norm(np.array([cx, cy]) - origin) / marker_side_px)
 
 
+def _pca_orientation(points_mm: np.ndarray) -> tuple[float, float]:
+    """Major-axis orientation in degrees [0, 180) and the anisotropy ratio."""
+    centered = points_mm - points_mm.mean(axis=0)
+    covariance = centered.T @ centered / max(len(centered), 1)
+    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+    large, small = float(eigenvalues[-1]), float(eigenvalues[0])
+    major = eigenvectors[:, -1]
+    orientation = math.degrees(math.atan2(float(major[1]), float(major[0]))) % 180.0
+    anisotropy = math.sqrt(large / small) if small > 1e-12 else float("inf")
+    return orientation, anisotropy
+
+
+def _centerline_summary(result: CenterlineResult | None) -> dict[str, Any] | None:
+    if result is None:
+        return None
+    return {
+        "status": result.status,
+        "length_mm": result.length_mm,
+        "endpoint_count": result.endpoint_count,
+        "pruned_branch_count": result.pruned_branch_count,
+        "terminal_radius_start_mm": result.terminal_radius_start_mm,
+        "terminal_radius_end_mm": result.terminal_radius_end_mm,
+        "skeleton_nodes": result.skeleton_nodes,
+        "reasons": list(result.reasons),
+    }
+
+
+def _volume_proxy(
+    result: CenterlineResult | None, elongation: float
+) -> dict[str, Any] | None:
+    """Explicitly-labelled slender-axisymmetric volume proxy, never a grade input."""
+    if result is None or result.status != "OK" or not result.volume_proxy_cm3:
+        return None
+    if elongation < 2.0:
+        return None
+    return {
+        "method": "frustum_integration_along_projected_centreline",
+        "value_cm3": float(result.volume_proxy_cm3),
+        "model": (
+            "Slender axisymmetric model (Huynh et al. 2020): circular "
+            "cross-sections perpendicular to the projected centreline, radii "
+            "taken from the in-plane distance transform."
+        ),
+        "assumptions": [
+            "The produce is approximately axisymmetric around its centreline.",
+            "The silhouette is a scaled orthographic projection of that body.",
+        ],
+        "limits": [
+            "Flattened produce (leaves, side-laid gourds) violates the circular "
+            "cross-section assumption and inflates the proxy.",
+            "Bent produce hides true 3-D arc length; the proxy follows the "
+            "projected path only.",
+            "Not a validated 3-D volume and never a grading metric.",
+        ],
+    }
+
+
 def measure_contour(
     contour_px: np.ndarray,
     calibration: Calibration,
@@ -111,23 +170,7 @@ def measure_contour(
     equiv_diameter_mm = 2.0 * math.sqrt(area_mm2 / math.pi)
     elongation = long_mm / max(short_mm, 1e-9)
     curvature_ratio = (perimeter_mm / 2.0) / max(long_mm, 1e-9)
-
-    if metric == "min_area_rect_short_mm":
-        value_mm = short_mm
-        metric_unit = "mm"
-    elif metric == "min_area_rect_long_mm":
-        value_mm = long_mm
-        metric_unit = "mm"
-    elif metric == "max_feret_mm":
-        value_mm = feret_mm
-        metric_unit = "mm"
-    elif metric == "projected_area_cm2":
-        value_mm = area_mm2 / 100.0
-        metric_unit = "cm2"
-    else:
-        raise MetrologyError(f"Unsupported measurement metric: {metric!r}.")
-    if not math.isfinite(value_mm) or value_mm <= 0:
-        raise MetrologyError("Computed physical dimension is zero or non-finite.")
+    pca_orientation_deg, pca_anisotropy = _pca_orientation(points_mm)
 
     moments = cv2.moments(contour)
     if moments["m00"] > 0:
@@ -142,6 +185,47 @@ def measure_contour(
     if marker_side <= 0:
         raise MetrologyError("Calibration is missing the actual marker side length.")
     offset_ratio = _distance_from_marker_ratio(contour, calibration)
+
+    # The skeleton pass costs tens of milliseconds; only pay it when the
+    # policy asked for the curved centreline, or when the silhouette is
+    # elongated enough for a centreline (and the slender volume proxy) to be
+    # meaningful at all.
+    centerline: CenterlineResult | None = None
+    if metric == "centerline_length_mm" or elongation >= 2.0:
+        centerline = centerline_analysis(
+            contour,
+            homography,
+            prune_mm=calibration_settings.centerline_prune_mm,
+            mm_per_px_approx=local_scale,
+        )
+
+    if metric == "min_area_rect_short_mm":
+        value_mm = short_mm
+        metric_unit = "mm"
+    elif metric == "min_area_rect_long_mm":
+        value_mm = long_mm
+        metric_unit = "mm"
+    elif metric == "max_feret_mm":
+        value_mm = feret_mm
+        metric_unit = "mm"
+    elif metric == "centerline_length_mm":
+        if centerline is None or centerline.status != "OK" or centerline.length_mm is None:
+            status = centerline.status if centerline is not None else "NOT_COMPUTED"
+            raise MetrologyError(
+                f"Curved centreline refused ({status}): the skeleton is "
+                "ambiguous. Separate touching produce or recapture the item "
+                "flat; no straight-axis fallback is applied."
+            )
+        value_mm = float(centerline.length_mm)
+        metric_unit = "mm"
+    elif metric == "projected_area_cm2":
+        value_mm = area_mm2 / 100.0
+        metric_unit = "cm2"
+    else:
+        raise MetrologyError(f"Unsupported measurement metric: {metric!r}.")
+    if not math.isfinite(value_mm) or value_mm <= 0:
+        raise MetrologyError("Computed physical dimension is zero or non-finite.")
+
     print_scale_error = (
         float(calibration.marker_measurement_uncertainty_mm) / marker_side
     ) * value_mm
@@ -154,9 +238,12 @@ def measure_contour(
     parallax_error = calibration_settings.parallax_uncertainty_mm
     # Root-sum-square is used only as an engineering propagation envelope.  It
     # is not a statistical 95% interval; the coverage note says so explicitly.
-    uncertainty = math.sqrt(
-        print_scale_error**2 + corner_error**2 + boundary_error**2 + parallax_error**2
-    )
+    terms = [print_scale_error, corner_error, boundary_error, parallax_error]
+    if metric == "centerline_length_mm":
+        # Both terminal radii compensate tip shortening; each carries a
+        # boundary-scale error of its own.
+        terms.append(2.0 * calibration_settings.boundary_uncertainty_px * local_scale)
+    uncertainty = math.sqrt(sum(term**2 for term in terms))
     uncertainty = max(float(uncertainty), 0.75)
     if metric == "projected_area_cm2":
         # The linear envelope above is in mm; convert it into a conservative
@@ -180,6 +267,33 @@ def measure_contour(
         )
         uncertainty = max(uncertainty, 0.04 * value_mm)
 
+    volume_proxy = _volume_proxy(centerline, elongation)
+    warnings = [
+        "Projected-plane measurement, not weight/volume and not a 3-D surface measurement.",
+        "Parallax from object height above the marker plane is included only as a configured engineering bound, not a measured correction.",
+    ]
+    if metric == "centerline_length_mm":
+        warnings.append(
+            "Curved-centreline length: endpoint compensation adds the terminal "
+            "silhouette radii; the true 3-D arc of a bent pod can exceed the "
+            "projected path."
+        )
+    if centerline is not None and centerline.status != "OK":
+        warnings.append(
+            f"Curved-centreline measurement refused: {centerline.status}."
+        )
+    if volume_proxy is not None:
+        warnings.append(
+            "volume_proxy_cm3 is a model proxy assuming circular cross-sections "
+            "along the projected centreline; it is not a validated 3-D volume, "
+            "not a mass, and never a grading input."
+        )
+    if metric == "projected_area_cm2":
+        warnings.append(
+            "Projected area is reported in cm2; the numeric uncertainty "
+            "field is an area envelope (cm2), not a length in mm."
+        )
+
     measurement = PhysicalMeasurement(
         metric=metric,
         value_mm=float(value_mm),
@@ -187,7 +301,11 @@ def measure_contour(
         lower_mm=float(value_mm - uncertainty),
         upper_mm=float(value_mm + uncertainty),
         unit=metric_unit,
-        method="aruco_planar_homography_contour_geometry",
+        method=(
+            "aruco_planar_homography_skeleton_centreline"
+            if metric == "centerline_length_mm"
+            else "aruco_planar_homography_contour_geometry"
+        ),
         calibration_id=calibration.calibration_id,
         secondary={
             "area_mm2": area_mm2,
@@ -198,6 +316,8 @@ def measure_contour(
             "equivalent_diameter_mm": equiv_diameter_mm,
             "elongation": elongation,
             "curvature_ratio": curvature_ratio,
+            "pca_orientation_deg": pca_orientation_deg,
+            "pca_anisotropy": pca_anisotropy,
             "local_mm_per_px": local_scale,
             "offset_from_marker_side_ratio": offset_ratio,
             "print_scale_error_mm": print_scale_error,
@@ -205,18 +325,9 @@ def measure_contour(
             "boundary_error_mm": boundary_error,
             "parallax_error_mm": parallax_error,
         },
-        warnings=[
-            "Projected-plane measurement, not weight/volume and not a 3-D surface measurement.",
-            "Parallax from object height above the marker plane is included only as a configured engineering bound, not a measured correction.",
-            *(
-                [
-                    "Projected area is reported in cm2; the numeric uncertainty "
-                    "field is an area envelope (cm2), not a length in mm."
-                ]
-                if metric == "projected_area_cm2"
-                else []
-            ),
-        ],
+        centerline=_centerline_summary(centerline),
+        volume_proxy=volume_proxy,
+        warnings=warnings,
     )
     return measurement, points_mm
 

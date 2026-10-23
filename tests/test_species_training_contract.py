@@ -57,6 +57,7 @@ def test_perceptual_group_key_is_rotation_invariant():
 
 def test_training_command_completes_evaluation_after_saving_checkpoint(tmp_path, monkeypatch):
     """Exercise orchestration with dummy embeddings, not image-accuracy evidence."""
+    import hashlib
     import json
     import sys
     from types import SimpleNamespace
@@ -77,9 +78,41 @@ def test_training_command_completes_evaluation_after_saving_checkpoint(tmp_path,
         return np.stack([embeddings[classes.index(row["label"])] for row in rows])
 
     monkeypatch.setitem(namespace, "extract", dummy_extract)
-    rows = [{"path": f"{split}_{label}.png", "label": label, "split": split,
-             "group": f"{split}_{label}", "source": "synthetic_test", "sha256": "0" * 64}
-            for split in ["train", "validation", "test"] for label in classes]
+    # The hardened ingestion gate requires real, hash-verified original-photo
+    # rows; point each row at a distinct repository file instead of mocking
+    # the gate itself.
+    pool = sorted((ROOT / "data" / "demo").glob("*.png")) + [ROOT / "requirements.txt"]
+    assert len(pool) >= 9
+    files = [
+        {
+            "path": item.relative_to(ROOT).as_posix(),
+            "sha256": hashlib.sha256(item.read_bytes()).hexdigest(),
+        }
+        for item in pool[:9]
+    ]
+    provenance = {
+        "is_original_capture": True,
+        "synthetic": False,
+        "augmented": False,
+        "reviewed_by": "unit-test",
+        "source": "unit-test",
+        "license": "unit-test",
+    }
+    rows = [
+        {
+            "path": files[index]["path"],
+            "sha256": files[index]["sha256"],
+            "label": label,
+            "split": split,
+            "group": f"{split}_{label}",
+            "specimen_id": f"{split}_{label}",
+            "capture_id": f"{split}_{label}",
+            **provenance,
+        }
+        for index, (split, label) in enumerate(
+            (split, label) for split in ["train", "validation", "test"] for label in classes
+        )
+    ]
     (tmp_path / "manifest.jsonl").write_text("\n".join(json.dumps(row) for row in rows))
     monkeypatch.setattr(sys, "argv", ["train_species_v2.py", "--run-dir", str(tmp_path)])
     module["main"]()

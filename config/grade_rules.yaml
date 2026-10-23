@@ -1,12 +1,17 @@
 # Growize Vision grade policy registry.
 #
-# IMPORTANT: the `threshold_mm` values under each real crop are deliberately
-# null.  ARL/Growize has not supplied approved size thresholds.  `demo_threshold_mm`
-# values exist only so the assessment UI can exercise the SMALL/BIG decision
-# contract with a clearly labelled, non-authoritative demonstration policy.
-# They are NOT agricultural standards, buyer specifications, or ARL approvals.
-version: "policy-2026-10-22.1"
-approval_summary: "No ARL-approved thresholds supplied; real crop thresholds remain null."
+# THRESHOLD DOCTRINE
+# ------------------
+# `threshold_mm` values are PUBLISHED_REFERENCE cut-offs compiled from citable
+# standards, trade practice, and research variety data (see the per-crop
+# `threshold_provenance` block and docs/SIZE_REFERENCE_SOURCES.md).  They are
+# NOT ARL/Growize approvals, NOT AGMARK grade documents, and NOT validated on
+# any local population; every accepted decision carries a disclaimer saying so.
+# A threshold may never exist in this file without a provenance block.
+# `demo_threshold_mm` values exist only so the assessment UI can exercise the
+# SMALL/BIG decision contract with a clearly labelled demo policy.
+version: "policy-2026-10-24.2"
+approval_summary: "Published-reference thresholds from citable standards/trade/research; not ARL-approved, not validated on local populations."
 guard_band_mm: 0.5
 crops:
   potato:
@@ -15,8 +20,25 @@ crops:
     physical_unit: single_tuber
     metric: min_area_rect_short_mm
     metric_description: Projected minimum width of the tuber silhouette, in millimetres, on the calibrated marker plane.
-    threshold_mm: null
+    threshold_mm: 50.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: INDUSTRY_TRADE_PRACTICE
+      source: "Trade/processing classification: 40-60 mm diameter = medium grade, >60 mm = large; smaller tubers fall outside the processing grade."
+      document: "https://intermag.eu/crop-guides-potato"
+      definition: "Tuber diameter (projected minimum silhouette axis used as width proxy)."
+      basis: "Midpoint 50 mm of the 40-60 mm processing grade as the binary cut; bands use the grade edges."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 40}
+      - {name: large, min_mm: 60}
     demo_threshold_mm: 60.0
+    demo_size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 45}
+      - {name: large, min_mm: 65}
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
     supported_poses: [overhead, modest_tilt]
@@ -26,7 +48,20 @@ crops:
     physical_unit: single_bulb
     metric: min_area_rect_short_mm
     metric_description: Projected minimum width of the bulb silhouette, in millimetres, on the calibrated marker plane.
-    threshold_mm: null
+    threshold_mm: 50.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: INDUSTRY_TRADE_PRACTICE
+      source: "Indian rotary-grader practice: small < 40 mm diameter, medium 40-60 mm, large > 60 mm; mandi practice reports >60 mm bulbs commanding a premium."
+      document: "PMC rotary onion-grader study (small/medium/large diameter classes)"
+      definition: "Bulb transverse diameter (projected minimum silhouette axis as proxy)."
+      basis: "Midpoint 50 mm of the 40-60 mm medium class as the binary cut; bands use the class edges."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 40}
+      - {name: large, min_mm: 60}
     demo_threshold_mm: 55.0
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
@@ -37,7 +72,20 @@ crops:
     physical_unit: single_fruit
     metric: min_area_rect_short_mm
     metric_description: Projected minimum width of the fruit silhouette (equatorial proxy only when pose is suitable), in millimetres.
-    threshold_mm: null
+    threshold_mm: 57.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: OFFICIAL_STANDARD
+      source: "CODEX STAN 293 round-tomato size scale: <=47, 47-57, 57-67, 67-82, 82-102, >102 mm diameter."
+      document: "https://www.fao.org/input/download/standards/11013/CXS_293e.pdf"
+      definition: "Maximum equatorial diameter (projected minimum silhouette axis as proxy for a round fruit in suitable pose)."
+      basis: "57 mm boundary between CODEX size codes M (47-57) and B (57-67) as the binary cut; bands group codes into small (<=47), medium (47-67), large (>67)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 47}
+      - {name: large, min_mm: 67}
     demo_threshold_mm: 58.0
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
@@ -46,9 +94,18 @@ crops:
     display_name: Okra
     aliases: [ladyfinger, bhindi, bhendi]
     physical_unit: single_pod
-    metric: min_area_rect_long_mm
-    metric_description: Projected longest straight axis of the pod silhouette, in millimetres; not a curved centreline.
-    threshold_mm: null
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the pod silhouette (skeleton path with terminal-radius compensation), in millimetres; ambiguous branched skeletons are refused for review.
+    threshold_mm: 120.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "IIVR varieties bear marketable pods of 8-10 cm; Arka Anamika pods measure 13.8-16.1 cm at marketable stage; export preference 6-8 cm."
+      document: "https://icariivr.org.in/okra-2 and https://ccari.res.in/dss/okra.html"
+      definition: "Pod length along the curved centreline (tip to tip, stem convention per buyer)."
+      basis: "120 mm separates standard tender marketable pods (8-10 cm) from long-pod variety types (13.8-16.1 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
     demo_threshold_mm: 100.0
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
@@ -58,8 +115,21 @@ crops:
     aliases: [kheera, kakdi]
     physical_unit: single_fruit
     metric: min_area_rect_long_mm
-    metric_description: Projected longest straight axis of the fruit silhouette, in millimetres; strongly bent fruit require review.
-    threshold_mm: null
+    metric_description: Projected longest axis of the fruit silhouette, in millimetres; strongly bent fruit require review.
+    threshold_mm: 150.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: OFFICIAL_STANDARD_PLUS_RESEARCH
+      source: "USDA slicing cucumber standard sets a minimum length of 6 in (152 mm); slicing cucumbers are typically harvested at 15-20 cm; North-American slicing types run 20-30 cm."
+      document: "https://www.ams.usda.gov/grades-standards/cucumber-grades-and-standards"
+      definition: "Fruit length (projected long axis)."
+      basis: "150 mm (rounded USDA 6 in minimum) as the binary cut; bands: below minimum = small, 150-200 mm standard slicing = medium, >=200 mm long types = large."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 150}
+      - {name: large, min_mm: 200}
     demo_threshold_mm: 150.0
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
@@ -70,7 +140,16 @@ crops:
     physical_unit: single_leaf
     metric: min_area_rect_long_mm
     metric_description: Projected longest axis of a single flat-laid leaf blade, in millimetres. Bunch grading is not supported.
-    threshold_mm: null
+    threshold_mm: 120.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: HORTICULTURE_REFERENCE
+      source: "Mature spinach leaves reach 10-15 cm (4-6 in) at harvest; savoy types average 12-15 cm; baby-leaf spinach is cut below 7-10 cm."
+      document: "https://hort.extension.wisc.edu/articles/spinach-spinacia-oleracea"
+      definition: "Single flat-laid leaf blade length, petiole excluded where the buyer specification says so."
+      basis: "120 mm midpoint of the 10-15 cm mature leaf range as the binary cut; horticulture reference, weaker than a marketing standard."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
     demo_threshold_mm: 100.0
     comparator: greater_than_or_equal
     min_visible_fraction: 0.98
@@ -87,3 +166,335 @@ crops:
     min_visible_fraction: 1.0
     supported_poses: []
     unsupported_reason: "Coriander has no single size definition in the supplied material. A bunch must be defined and weighed; no demo threshold is offered."
+  brinjal:
+    display_name: Brinjal / eggplant
+    aliases: [baingan, baigan, eggplant, aubergine]
+    physical_unit: single_fruit
+    metric: max_feret_mm
+    metric_description: Maximum projected span of the fruit (diameter proxy for round types, length proxy for long types), in millimetres.
+    threshold_mm: 120.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Indian variety evaluations: fruit length 4.9-17.2 cm (mean ~9.7 cm); long slender types reach 16-27 cm; Arka Shirish highest at 18.5 cm."
+      document: "Gurjar et al. 2019 brinjal variety evaluation (India); World Vegetable Center descriptors"
+      definition: "Maximum projected caliper span; buyer must specify round-type diameter vs long-type length convention."
+      basis: "120 mm separates standard marketable fruit (5-12 cm) from long-type varieties (16-27 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 120.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  capsicum:
+    display_name: Capsicum / bell pepper
+    aliases: [shimla_mirch, shimla, bell_pepper, pepper]
+    physical_unit: single_fruit
+    metric: min_area_rect_short_mm
+    metric_description: Projected minimum width of the blocky fruit (diameter proxy), in millimetres.
+    threshold_mm: 70.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: INDUSTRY_TRADE_PRACTICE
+      source: "US market grading: Large no less than 3 in (76 mm) diameter, Medium no less than 2.5 in (64 mm); Indian blocky varieties measure 4.5-7.3 cm fruit diameter."
+      document: "https://www.usfoods.com/tools-tips-and-ideas/tools/resource-centre/produce-resources/peppers ; CABI 2022 capsicum variety performance (India)"
+      definition: "Fruit diameter (projected minimum silhouette axis as proxy)."
+      basis: "Bands use the 64/76 mm market grade edges; binary cut 70 mm between them."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 64}
+      - {name: large, min_mm: 76}
+    demo_threshold_mm: 70.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  cabbage:
+    display_name: Cabbage
+    aliases: [patta_gobhi, pattagobhi, cabbage_head]
+    physical_unit: single_head
+    metric: max_feret_mm
+    metric_description: Maximum projected span of the head (diameter proxy), in millimetres.
+    threshold_mm: 180.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Marketable cabbage heads average 20.3-21.5 cm diameter; smaller grades 12.0-15.6 cm; typical maturity 15-22 cm."
+      document: "Wszelaki et al. 2003, HortScience cabbage head study"
+      definition: "Head diameter (projected maximum span)."
+      basis: "180 mm below the ~20 cm marketable average splits smaller vs average/larger heads."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 180.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  cauliflower:
+    display_name: Cauliflower
+    aliases: [phool_gobhi, phoolgobhi, gobi]
+    physical_unit: single_curd
+    metric: max_feret_mm
+    metric_description: Maximum projected span of the curd (diameter proxy), in millimetres.
+    threshold_mm: 150.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: OFFICIAL_STANDARD_PLUS_RESEARCH
+      source: "USDA market grade requires curds not less than 4 in (102 mm) diameter; harvest-ready heads firm and compact at 6-8 in (15-20 cm)."
+      document: "USDA cauliflower grades and standards; university extension harvest guidance"
+      definition: "Curd diameter (projected maximum span)."
+      basis: "150 mm midpoint of the 15-20 cm harvest-ready range; below 102 mm fails the USDA market minimum."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 150.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  beetroot:
+    display_name: Beetroot
+    aliases: [chukandar, beet, beets]
+    physical_unit: single_root
+    metric: min_area_rect_short_mm
+    metric_description: Projected minimum width of the root (diameter proxy), in millimetres.
+    threshold_mm: 50.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: OFFICIAL_STANDARD_PLUS_RESEARCH
+      source: "USDA beets: minimum diameter 1.5 in (38 mm); fresh-market harvest ~2 in (50 mm); South Africa Class 1 minimum 40 mm."
+      document: "https://www.ams.usda.gov/grades-standards/beets-grades-and-standards ; UNECE FFV-59 root and tubercle vegetables"
+      definition: "Root diameter (projected minimum silhouette axis as proxy)."
+      basis: "Bands use 40/60 mm trade classes; binary cut 50 mm at the typical fresh-market size."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    size_bands:
+      - {name: small, min_mm: 0}
+      - {name: medium, min_mm: 40}
+      - {name: large, min_mm: 60}
+    demo_threshold_mm: 50.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  turnip:
+    display_name: Turnip
+    aliases: [shalgam]
+    physical_unit: single_root
+    metric: min_area_rect_short_mm
+    metric_description: Projected minimum width of the root (diameter proxy), in millimetres.
+    threshold_mm: 60.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: INDUSTRY_TRADE_PRACTICE
+      source: "UNECE FFV-59 sets no mandatory size for turnips; typical market roots run 5-8 cm diameter."
+      document: "https://unece.org/fileadmin/DAM/trade/agr/standard/fresh/FFV-Std/English/59_RootandTubercleVeg.pdf"
+      definition: "Root diameter (projected minimum silhouette axis as proxy)."
+      basis: "60 mm midpoint of the 5-8 cm typical market range; weakest tier - replace with a buyer specification when available."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 60.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  carrot:
+    display_name: Carrot
+    aliases: [gajar]
+    physical_unit: single_root
+    metric: min_area_rect_long_mm
+    metric_description: Projected long axis of the topped root, in millimetres.
+    threshold_mm: 170.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: OFFICIAL_STANDARD_PLUS_RESEARCH
+      source: "UNECE FFV-10: main-crop minimum diameter 20 mm (early/small carrots 10 mm); USDA topped carrots length not less than 5 in (127 mm); commercial roots 15-20 cm."
+      document: "https://unece.org/sites/default/files/2023-12/FFV10_Carrots_2023_e.pdf ; https://www.ams.usda.gov/grades-standards/topped-carrots-grades-and-standards"
+      definition: "Root length (projected long axis)."
+      basis: "170 mm midpoint of the 15-20 cm commercial root range; below 127 mm fails the USDA U.S. No. 1 minimum."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 170.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  green_chilli:
+    display_name: Green chilli
+    aliases: [hari_mirch, mirchi, chilli, chili]
+    physical_unit: single_pod
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the pod, in millimetres; ambiguous branched skeletons are refused.
+    threshold_mm: 90.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Indian market varieties 6-11 cm; IIVR export-grade green chilli 7-9 cm long, 0.8-1.0 cm wide; LCA 625 at 9-11 cm."
+      document: "https://icariivr.org.in ; Kavitha et al., J. Hort. Sci. chilli variety assessment (Salem)"
+      definition: "Pod length along the curved centreline."
+      basis: "90 mm separates standard market pods (6-9 cm) from long-pod varieties (9-11 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 90.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  bitter_gourd:
+    display_name: Bitter gourd
+    aliases: [karela, karelaa, bitter_melon]
+    physical_unit: single_fruit
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the fruit, in millimetres; ambiguous branched skeletons are refused.
+    threshold_mm: 250.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "TNAU: preferred market fruits 20-25 cm; commercial hybrids 29-33 cm long, 4-8 cm diameter; white-spined medium types ~30 cm."
+      document: "https://agritech.tnau.ac.in/horticulture/horti_vegetables_bittergourd.html"
+      definition: "Fruit length along the curved centreline."
+      basis: "250 mm top of the TNAU preferred market range separates preferred-size fruit from long hybrid types."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 250.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  ridge_gourd:
+    display_name: Ridge gourd
+    aliases: [turai, tori, nenua, sponge_gourd, ribbed_loofah]
+    physical_unit: single_fruit
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the fruit, in millimetres; ambiguous branched skeletons are refused.
+    threshold_mm: 250.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "IIVR varieties: green, long, straight fruits of 20-30 cm (up to 40 cm on trained plants), 3-4 cm diameter."
+      document: "https://icariivr.org.in/ridge-gourd-2"
+      definition: "Fruit length along the curved centreline."
+      basis: "250 mm midpoint of the 20-30 cm variety range separates shorter from long trained-plant fruits."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 250.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  bottle_gourd:
+    display_name: Bottle gourd
+    aliases: [lauki, ghia, dudhi, calabash]
+    physical_unit: single_fruit
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the fruit, in millimetres; fruits longer than the measurement mat are refused.
+    threshold_mm: 350.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "IIVR varieties: light green fruits ~30 cm long, 7 cm diameter; commercial hybrids 35-50 cm; specialty extra-long types to 200 cm (outside station range)."
+      document: "https://icariivr.org.in/bottle-gourd-2"
+      definition: "Fruit length along the curved centreline."
+      basis: "350 mm separates standard varieties (~30 cm) from long commercial hybrids (35-50 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 350.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  green_bean:
+    display_name: Green / French bean
+    aliases: [sem, beans, french_bean, pole_bean, guar, cluster_bean]
+    physical_unit: single_pod
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the pod, in millimetres; ambiguous branched skeletons are refused.
+    threshold_mm: 140.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "IIVR pole varieties pod length 14-15 cm; Indian bush evaluations 13.4-14.3 cm; marketable pods typically 12-15 cm (cluster/guar pods similar)."
+      document: "https://icariivr.org.in (french bean varieties)"
+      definition: "Pod length along the curved centreline."
+      basis: "140 mm midpoint of the 12-15 cm marketable range separates short from long-podded types (IIHR long types to 23 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 140.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  ivy_gourd:
+    display_name: Ivy gourd
+    aliases: [tindora, kundru, kowai, little_gourd]
+    physical_unit: single_fruit
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the fruit, in millimetres.
+    threshold_mm: 50.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Tender fruits harvested at 4-5 cm; mature fruits 2.5-6 cm (Kundru 35 to 6-7 cm)."
+      document: "Coccinia grandis cultivation references (ICAR/extension)"
+      definition: "Fruit length along the curved centreline."
+      basis: "50 mm top of the tender harvest window separates tender market fruit from mature/oversized ones."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 50.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  pointed_gourd:
+    display_name: Pointed gourd
+    aliases: [parwal, parval, potol]
+    physical_unit: single_fruit
+    metric: centerline_length_mm
+    metric_description: Curved centreline length of the fruit, in millimetres.
+    threshold_mm: 100.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Fruits smooth, fusiform, 8-12 cm long (range 5-15 cm)."
+      document: "Trichosanthes dioica cultivation references (ICAR/extension)"
+      definition: "Fruit length along the curved centreline."
+      basis: "100 mm midpoint of the 8-12 cm marketable range."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 100.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  sweet_potato:
+    display_name: Sweet potato
+    aliases: [shakarkand, shakarkandi, kumara]
+    physical_unit: single_root
+    metric: min_area_rect_long_mm
+    metric_description: Projected long axis of the root, in millimetres.
+    threshold_mm: 180.0
+    threshold_provenance:
+      status: PUBLISHED_REFERENCE
+      quality: RESEARCH_VARIETY_DATA
+      source: "Storage root length across released varieties 8.9-24.8 cm; commercial roots average 15-20 cm."
+      document: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9582706 ; USDA-ARS sweetpotato production guide"
+      definition: "Root length (projected long axis)."
+      basis: "180 mm midpoint of the 15-20 cm commercial average; genotype spread is wide (8.9-24.8 cm)."
+      retrieved: "2026-10-24"
+    approval_status: PUBLISHED_REFERENCE
+    demo_threshold_mm: 180.0
+    comparator: greater_than_or_equal
+    min_visible_fraction: 0.98
+    supported_poses: [overhead, modest_tilt]
+  pumpkin:
+    display_name: Pumpkin
+    aliases: [kaddu]
+    physical_unit: single_fruit
+    metric: max_feret_mm
+    metric_description: Not measurable at the current station.
+    threshold_mm: null
+    demo_threshold_mm: null
+    comparator: greater_than_or_equal
+    min_visible_fraction: 1.0
+    supported_poses: []
+    unsupported_reason: "Fruits routinely exceed the measurement-mat field of view; a larger calibrated station is required before any size claim."
+  ash_gourd:
+    display_name: Ash gourd
+    aliases: [petha, wax_gourd]
+    physical_unit: single_fruit
+    metric: max_feret_mm
+    metric_description: Not measurable at the current station.
+    threshold_mm: null
+    demo_threshold_mm: null
+    comparator: greater_than_or_equal
+    min_visible_fraction: 1.0
+    supported_poses: []
+    unsupported_reason: "Fruits routinely exceed the measurement-mat field of view; a larger calibrated station is required before any size claim."

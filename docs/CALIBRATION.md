@@ -71,11 +71,23 @@ millimetre value or a size class.
 | `min_area_rect_short_mm` | Shorter side of the minimum-area rectangle around the projected contour | mm |
 | `min_area_rect_long_mm` | Longer side of that rectangle; straight axis, not a curved centreline | mm |
 | `max_feret_mm` | Maximum caliper distance between projected contour points | mm |
+| `centerline_length_mm` | Curved centreline: Zhang–Suen skeleton path with terminal-radius compensation | mm |
 | `projected_area_cm2` | Projected contour area on the marker plane | cm² |
 
 Mask area in pixels is retained separately and is not a physical grade.
 `curvature_ratio` warns when a straight-axis metric may be biased for bent pods or
 leaves.
+
+The curved-centreline metric rasterises the calibrated silhouette, thins it to a
+medial axis, breaks thinning loops at inner bends, prunes skeleton spurs shorter
+than `calibration.centerline_prune_mm`, and sums the leaf-to-leaf path in
+millimetres, adding both terminal silhouette radii. Skeletons that remain
+branched or cyclic are refused (`AMBIGUOUS_SKELETON_*`) and surface as
+`REVIEW_BORDERLINE`; no straight-axis fallback is substituted. An elongated
+silhouette also carries a `volume_proxy_cm3` block (frustum integration along the
+projected centreline). It is an explicitly-labelled slender-axisymmetric proxy
+per Huynh et al. (2020), not a validated 3-D volume, not a mass, and never a
+grading input.
 
 ## 6. Uncertainty envelope
 
@@ -103,6 +115,41 @@ otherwise    -> REVIEW_BORDERLINE
 `m` is the measured metric, `u` the uncertainty, `T` the crop threshold. A configured
 guard band widens the review zone. Real thresholds are `null` until ARL approves
 them; demo thresholds are labelled `ASSESSMENT_DEMO_ONLY`.
+
+
+### Threshold provenance
+
+Strict-mode thresholds and bands are PUBLISHED_REFERENCE values compiled from
+citable standards, trade practice, and research variety data — see
+`docs/SIZE_REFERENCE_SOURCES.md` for the full source table. The config loader
+rejects any `threshold_mm` without a `threshold_provenance` block, and every
+accepted decision carries `PUBLISHED_REFERENCE_NOT_POPULATION_VALIDATED` plus
+a warning, because literature values are not local-population measurements.
+Measured specimen medians (`EMPIRICAL_REFERENCE`) and ARL approvals
+(`APPROVED_SOURCE`) override them whenever they exist.
+
+### Multi-band grades
+
+A crop may define ordered size bands (`size_bands`, or `demo_size_bands` for the
+explicitly-labelled demonstration policy) instead of — or alongside — a single
+binary cut-off. Band *i* covers `[min_mm_i, min_mm_{i+1})`; the first band starts
+at 0 and the last is unbounded. The measurement interval must sit entirely
+inside one band after the guard band is applied to every edge, otherwise the
+result is `REVIEW_BORDERLINE` with `UNCERTAINTY_OR_GUARD_BAND_CROSSES_BAND_EDGE`.
+The first band maps to SMALL and the last to BIG so a two-band table reproduces
+the binary rule exactly; middle bands (for example `medium`) are reported as
+`size_band` with no binary size class. Band tables are validated at config load
+(unique names, ascending edges, first edge at 0) and follow the same approval
+doctrine as thresholds: shipped demo bands are not AGMARK/ICAR size codes.
+
+### Segmentation cross-check
+
+When the background-difference method is primary (marker visible, matte mat),
+an independent chromatic-energy Otsu mask is computed and compared by IoU
+(`segmentation.ensemble_min_iou`, default 0.80). Below the threshold every
+instance is flagged `SEGMENTATION_DISAGREEMENT` and refused for review: one of
+the two methods was fooled by lighting or background, and neither is trusted
+silently. Setting the knob to 0 disables the cross-check.
 
 ## 8. What calibration cannot do
 

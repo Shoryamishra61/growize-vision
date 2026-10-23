@@ -49,6 +49,7 @@ class SegmentationResult:
     color_distance_threshold: float = 0.0
     background_lab: tuple[float, float, float] = (0.0, 0.0, 0.0)
     border_delta_p95: float = 0.0
+    ensemble_iou: float | None = None
     warnings: list[str] = field(default_factory=list)
 
 
@@ -121,6 +122,25 @@ def _shadow_suppression(
     return candidate & ~shadow
 
 
+def _chroma_candidate(image_bgr: np.ndarray, lab: np.ndarray) -> np.ndarray:
+    """Markerless chromatic-energy Otsu mask used as the independent opinion."""
+    hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
+    sat = hsv[:, :, 1]
+    chroma = np.sqrt((lab[:, :, 1] - 128.0) ** 2 + (lab[:, :, 2] - 128.0) ** 2)
+    energy = np.clip(0.5 * sat + 0.5 * chroma, 0, 255).astype(np.uint8)
+    _, candidate = cv2.threshold(energy, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return candidate
+
+
+def _mask_iou(a: np.ndarray, b: np.ndarray) -> float:
+    a_set = a > 0
+    b_set = b > 0
+    union = int(np.logical_or(a_set, b_set).sum())
+    if union == 0:
+        return 1.0
+    return float(np.logical_and(a_set, b_set).sum()) / union
+
+
 def segment_foreground(
     image_bgr: np.ndarray,
     calibration: Calibration | None,
@@ -138,15 +158,13 @@ def segment_foreground(
         lab, marker, settings
     )
     threshold = max(settings.color_distance_min, p95 + settings.adaptive_margin)
+    ensemble_iou: float | None = None
+    masks_disagree = False
     if marker is None or busy:
         # In-the-wild produce segmentation:
         # Use chromatic energy & saturation so real produce is detected cleanly
         # across variable table, wood, cutting board, and ambient backgrounds.
-        hsv = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2HSV)
-        sat = hsv[:, :, 1]
-        chroma = np.sqrt((lab[:, :, 1] - 128.0) ** 2 + (lab[:, :, 2] - 128.0) ** 2)
-        energy = np.clip(0.5 * sat + 0.5 * chroma, 0, 255).astype(np.uint8)
-        _, candidate = cv2.threshold(energy, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        candidate = _chroma_candidate(image_bgr, lab)
     else:
         delta = lab - background_lab.reshape(1, 1, 3)
         distance = np.sqrt(np.sum(delta * delta, axis=2))
@@ -154,6 +172,26 @@ def segment_foreground(
         candidate = _shadow_suppression(
             lab, background_lab, candidate > 0, settings.shadow_value_only_penalty
         ).astype(np.uint8) * 255
+        if settings.ensemble_min_iou > 0.0:
+            # Blueprint mask-quality gate: the two independent methods must
+            # agree; disagreement means lighting/background fooled one of
+            # them, and the measurement must not trust either silently.
+            k = max(3, int(settings.morph_kernel))
+            if k % 2 == 0:
+                k += 1
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+            alternate = _chroma_candidate(image_bgr, lab)
+            alternate = cv2.morphologyEx(alternate, cv2.MORPH_OPEN, kernel, iterations=1)
+            alternate = cv2.morphologyEx(alternate, cv2.MORPH_CLOSE, kernel, iterations=2)
+            comparison = candidate.copy()
+            if marker is not None:
+                excluded = marker_mask(
+                    image_bgr.shape, marker, settings.marker_exclusion_margin_px
+                )
+                alternate[excluded > 0] = 0
+                comparison[excluded > 0] = 0
+            ensemble_iou = _mask_iou(comparison, alternate)
+            masks_disagree = ensemble_iou < settings.ensemble_min_iou
 
     if marker is not None:
         excluded = marker_mask(
@@ -237,6 +275,8 @@ def segment_foreground(
             flags.append("LOW_SOLIDITY_POSSIBLY_MERGED")
         if holes_px > 0.08 * max(area, 1.0):
             flags.append("SIGNIFICANT_MASK_CONCAVITY")
+        if masks_disagree:
+            flags.append("SEGMENTATION_DISAGREEMENT")
         objects.append(
             SegmentedObject(
                 mask=component_mask,
@@ -267,6 +307,13 @@ def segment_foreground(
             "The border colour is inconsistent. A plain matte tray is required "
             "for physical measurement."
         )
+    if masks_disagree and ensemble_iou is not None:
+        warnings_list.append(
+            f"SEGMENTATION_DISAGREEMENT: background-difference and chroma masks "
+            f"agree on only {ensemble_iou:.2f} IoU (minimum "
+            f"{settings.ensemble_min_iou:.2f}). Lighting or background may be "
+            "non-standard; no measurement is trusted from either mask alone."
+        )
 
     union_mask = np.zeros(image_bgr.shape[:2], np.uint8)
     for obj in objects:
@@ -278,5 +325,6 @@ def segment_foreground(
         color_distance_threshold=float(threshold),
         background_lab=tuple(float(v) for v in background_lab),
         border_delta_p95=float(p95),
+        ensemble_iou=ensemble_iou,
         warnings=warnings_list,
     )

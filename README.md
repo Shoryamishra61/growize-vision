@@ -18,23 +18,29 @@ upload; accepted observations receive exactly one of two labels, `SMALL` or `BIG
 
 > ## Evidence status — read this first
 >
-> - **No learned model was trained.** There are no weights, no checkpoints, and no
->   model accuracy. `model_sha` is `null`. The release path is the deterministic
->   OpenCV/ArUco baseline.
-> - **No real measured dataset was supplied.** Real-produce accuracy, measurement
->   MAE, per-crop confusion matrices, and field coverage are **`NOT EVALUATED`**.
-> - **No ARL/Growize thresholds were supplied.** Every real `threshold_mm` in
->   `config/grade_rules.yaml` is `null`. The demo cut-offs are clearly labelled
->   engineering demonstrations and are **not** agricultural or buyer standards.
-> - Synthetic fixtures verify geometry, status precedence, and refusal behaviour.
->   They are **not** accuracy evidence.
-> - Release state: **YELLOW** — functional calibrated pilot with no real-produce
->   validation. It is not production, field, or safety certified.
+> - **Physical size-model release is blocked.** No measured station reference and
+>   independent test set are available. No universal size accuracy is established.
+> - Working definition: below the same-kind measured training median is SMALL;
+>   at or above it is BIG, with refusal for uncertain measurements.
+> - Historical species checkpoints used augmented training views. The simplified
+>   interface does not load them, apply appearance sizing, or enable demo cutoffs.
+> - Current training/evaluation requires reviewed original real photographs.
+>   Synthetic/composited images and generated augmentation are excluded.
+> - A separate licensed RGB-D broccoli benchmark with measured diameters was
+>   acquired for external validation only; it has not produced a sizing result.
+> - See [current evidence and limits](reports/real_size/STATUS.md) and
+>   [industrial sizing research](reports/real_size/INDUSTRIAL_SIZING_RESEARCH.md), plus the
+>   [real reference data contract](data/real_size/README.md). Older sections below
+>   describe underlying engine capabilities, not a validated size-model release.
 
 ## What the app does
 
-For one operator-selected crop and one visible, non-touching vegetable on a plain
-matte plane:
+The interface contains only image upload/clipboard, camera, video, and output.
+There is no crop selector, appearance-size guess, or demo-size mode. Missing
+physical scale or reference data produces a refusal instead of a size label.
+
+The underlying controlled-station engine can, when supplied a validated policy
+and calibration:
 
 1. Decode and normalise the image, webcam frame, or sampled video frame.
 2. Detect a printed ArUco marker and validate its geometry, ID, and user-measured
@@ -55,8 +61,7 @@ Only `SMALL` and `BIG` are accepted size classes. `NO_OBJECT`,
 ```powershell
 cd "C:\code_shit\projects\agriculture vegetables"
 python -m pip install -e .
-python -m pytest -q
-python scripts/demo_preflight.py --full-video --camera
+python -m pytest tests/test_real_photo_contract.py tests/test_config.py tests/test_grading.py -q
 python apps\gradio_app.py
 ```
 
@@ -139,88 +144,45 @@ image / webcam / MP4
 Every input adapter calls `InferenceService.inspect_frame`; there is no separate
 webcam or video grading logic. See `docs/ARCHITECTURE.md`.
 
-## Measured evidence in this repository
+## Current verification and data status
 
-| Evidence | Result | Scope |
-|---|---|---|
-| Unit/integration suite | **164 passed** (`python -m pytest -q`) | Geometry, media, config, inference, exports, video, tracking, dataset |
-| Synthetic contract suite | **8/8 checks passed** | Status/refusal contract and known synthetic geometry only |
-| Synthetic geometry error | median 0.179 mm, max 0.268 mm over 4 fixtures | Vector-defined fixtures, **not real produce** |
-| CPU latency, 80 timed observations | median 116.0 ms, p95 124.3 ms | One frame at a time, decode excluded, this workstation |
-| Demo preflight | **PASS** | Assets, hashes, config, synthetic contract, H.264 video, one webcam frame |
-| Real measured specimens | **NOT EVALUATED** | No dataset |
-| Trained model comparison | **BLOCKED** | No model |
-| Real-produce confusion matrix | **NOT EVALUATED** | No real labels/thresholds |
+Real-only bean-leaf research now includes612 independently measured leaves from306 plants.
+All three segmentation/size candidates failed real validation and remain outside the app.
+See [current experiment state](reports/real_size/lsid_beans/current_state.json).
+The frozen best candidate made5 wrong decisions among67 accepted clean held-out captures
+(120 total,55.83% coverage). It was rejected for release; this is not universal size accuracy.
 
-Raw reports: `reports/pytest_full.txt`, `reports/synthetic_evaluation.json`,
-`reports/latency_report.json`, `reports/preflight.json`,
-`reports/metrics/final_results.json`.
 
-## Dataset and model status
+- Focused numerical/provenance/UI-empty-state checks: **62 passed**.
+- Original measured station reference and test manifest: **empty / BLOCKED**.
+- Size-model accuracy and physical measurement error: **not evaluated**.
+- External real broccoli benchmark: **20 RGB/depth sets, 94 diameter annotations**,
+  acquired, checksummed and decoded only. Reserved for validation, not reference fitting.
+- Historical species checkpoints and synthetic reports are retained for provenance;
+  they do not satisfy the current original-real-photo-only release requirement.
+- The active simplified UI does not load a species model or enable physical grades
+  without the required scale and measured reference. Camera produce trials and real
+  produce video grading remain unverified.
 
-- `data/dataset_manifest_template.json` is an **empty template**, not evidence.
-- `data/demo/demo_manifest.json` contains **synthetic fixtures only**.
-- `scripts/validate_dataset.py` rejects missing provenance/licence/consent,
-  duplicate hashes, missing measured truth, and split leakage.
-- `scripts/group_split.py` assigns whole lots/sessions/specimens to one split.
-- `scripts/evaluate_baseline.py` refuses to emit a confusion matrix until real,
-  measured, licensed specimens and approved thresholds exist.
-- `scripts/train_segmentation.py` deliberately refuses to train and exits `BLOCKED`.
-- `docs/DATASET_CARD.md` and `docs/MODEL_CARD.md` record the absence honestly.
+Current receipts: [size status](reports/real_size/STATUS.md),
+[physical validation](reports/real_size/validation.json),
+[external source](reports/real_size/external_validation_source.json),
+and [UI checks](reports/real_size/ui_checks.json).
 
-## Failure behaviour (synthetic gallery)
-
-Four required refusal cases are rendered in `reports/failure_gallery/index.md`:
-missing marker, empty mat, blurred frame, and edge-clipped object. Each panel shows
-the original image, annotated result, expected status, and actual reason. All are
-labelled synthetic. A real-produce failure gallery is **BLOCKED** until measured
-specimens exist.
-
-## Commands
+## Current commands
 
 ```powershell
-# Tests and evidence
-python -m pytest -q
-python -m pytest -q *> reports\pytest_full.txt
-python -m ruff check .
-
-# Synthetic contract and latency
-python scripts\evaluate_synthetic.py
-python scripts\benchmark_latency.py --runs 10 --warmup 2
-python scripts\build_failure_gallery.py
-
-# Environment and media preflight
-python scripts\demo_preflight.py --full-video --camera
-
-# Real dataset gates (currently blocked/empty by design)
-python scripts\validate_dataset.py --manifest data\dataset_manifest_template.json --allow-empty
-python scripts\group_split.py --manifest <real_manifest.json>
-python scripts\evaluate_baseline.py --manifest <real_manifest.json> --marker-side-mm <measured_mm>
-
-# Honest training refusal
-python scripts\train_segmentation.py
-
-# App
-python apps\gradio_app.py
+python -m pytest tests/test_real_photo_contract.py tests/test_config.py tests/test_grading.py -q
+python scripts/build_size_reference.py --manifest data/real_size/manifest.jsonl
+python scripts/validate_real_size.py --manifest data/real_size/manifest.jsonl
+python apps/gradio_app.py
 ```
 
-## Three-minute demo path
-
-1. Show the policy banner: real cut-offs are `TBD`; demo mode is not official.
-2. Upload `data/demo/potato_big_synthetic.png` with demo mode on. Point to the
-   calibrated marker, measured 72.3 mm value, and `BIG`.
-3. Upload `data/demo/okra_small_synthetic.png`; show the long-axis metric and
-   `SMALL`.
-4. Clear the image, disable demo mode, re-inspect. Show `POLICY_REQUIRED` and the
-   `NO_APPROVED_THRESHOLD` reason.
-5. Upload `data/demo/no_marker_synthetic.png`; show `CALIBRATION_REQUIRED` with no
-   millimetres.
-6. Open the MP4 tab and process `data/demo/synthetic_potato_video.mp4`; explain
-   that counts are **per-frame observations**, not unique vegetables.
-7. Open **Evidence & limits** and `reports/DEMO_REPORT.md`; state plainly that no
-   real measured validation or trained model exists.
-
-Full script and fallback: `docs/DEMO_SCRIPT.md`.
+The two size-data commands currently exit BLOCKED because the station manifest is
+empty. Follow [the real-photo contract](data/real_size/README.md) to supply independent
+measured specimens. Do not generate, train on, or evaluate synthetic/composited images.
+The older synthetic demo, benchmark and gallery scripts are historical tooling,
+not the current training, evaluation or reviewer workflow.
 
 ## Repository layout
 

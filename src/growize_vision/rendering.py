@@ -107,7 +107,9 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
 
     x, y, w, h = instance.bbox_px
     label_y = max(18, y - 8)
-    if decision and decision.accepted and decision.size_class:
+    if decision and decision.accepted and decision.band_name:
+        headline = decision.band_name.upper()
+    elif decision and decision.accepted and decision.size_class:
         headline = decision.size_class.value
     elif decision and decision.status != Status.CALIBRATION_REQUIRED:
         headline = decision.status.value
@@ -155,8 +157,9 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
     margin = max(8, int(min(h, w) * 0.018))
     line_h = max(18, int(min(h, w) * 0.031))
     lines: list[str] = []
-    if result.status == Status.ACCEPTED and result.size_class:
-        lines.append(f"RESULT  {result.size_class.value}")
+    if result.status == Status.ACCEPTED and (result.size_class or result.size_band):
+        grade = result.size_band.upper() if result.size_band else result.size_class.value
+        lines.append(f"RESULT  {grade}")
     elif result.calibration and not result.calibration.valid:
         lines.append("UNSCALED APPEARANCE MODE")
         if len(result.instances) > 1:

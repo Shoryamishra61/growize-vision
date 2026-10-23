@@ -41,22 +41,64 @@ def policy_payload(**crop_overrides) -> dict:
     }
 
 
-def test_project_policies_have_no_approved_thresholds() -> None:
+def test_project_policies_carry_published_reference_provenance() -> None:
     policies = load_policies()
     assert policies.version
     assert policies.approval_summary
     for key in policies.crop_keys:
         policy = policies.policy(key)
-        assert policy.threshold_mm is None
-        assert policy.approval_status == "NOT_PROVIDED"
         assert policy.demo is False
+        if policy.threshold_mm is None:
+            # Only crops with no defensible size definition or station fit stay
+            # refused: coriander (undefined unit), pumpkin/ash gourd (exceed mat).
+            assert key in {"coriander", "pumpkin", "ash_gourd"}
+            assert policy.approval_status == "NOT_PROVIDED"
+            assert policy.bands is None
+            continue
+        assert policy.threshold_mm is not None and policy.threshold_mm > 0
+        assert policy.approval_status == "PUBLISHED_REFERENCE"
+        assert policy.provenance is not None
+        assert policy.provenance["source"].strip()
+        assert policy.provenance["status"] == "PUBLISHED_REFERENCE"
+        assert policy.provenance["definition"].strip()
+        assert policy.source == policy.provenance["source"]
+
+
+def test_threshold_without_provenance_is_rejected(tmp_path) -> None:
+    payload = policy_payload(threshold_mm=55.0)
+    path = write_yaml(tmp_path / "no_provenance.yaml", payload)
+    with pytest.raises(ConfigError, match="threshold_provenance"):
+        load_policies(path)
+    payload["threshold_provenance"] = {"source": " ", "status": "PUBLISHED_REFERENCE"}
+    path = write_yaml(tmp_path / "blank_provenance.yaml", payload)
+    with pytest.raises(ConfigError, match="threshold_provenance"):
+        load_policies(path)
+
+
+def test_published_size_bands_load_for_graded_crops() -> None:
+    policies = load_policies()
+    expected_edges = {
+        "potato": [0.0, 40.0, 60.0],
+        "onion": [0.0, 40.0, 60.0],
+        "tomato": [0.0, 47.0, 67.0],
+        "cucumber": [0.0, 150.0, 200.0],
+        "capsicum": [0.0, 64.0, 76.0],
+        "beetroot": [0.0, 40.0, 60.0],
+    }
+    for key, edges in expected_edges.items():
+        policy = policies.policy(key)
+        assert policy.bands is not None, key
+        assert [band.min_mm for band in policy.bands] == edges, key
+    for key in ("okra", "spinach"):
+        assert policies.policy(key).bands is None, key
 
 
 def test_demo_thresholds_are_opt_in_and_labelled() -> None:
     policies = load_policies()
     strict = policies.policy("potato")
     demo = policies.policy("potato", demo=True)
-    assert strict.threshold_mm is None
+    assert strict.threshold_mm == 50.0
+    assert strict.approval_status == "PUBLISHED_REFERENCE"
     assert demo.threshold_mm == 60.0
     assert demo.demo is True
     assert demo.approval_status == "ASSESSMENT_DEMO_ONLY"
@@ -172,3 +214,98 @@ def test_config_digest_is_order_sensitive_and_content_sensitive(tmp_path) -> Non
     assert config_digest(first, second) != config_digest(second, first)
     second.write_text("b: 3\n", encoding="utf-8")
     assert config_digest(first, second) != config_digest(first, tmp_path / "a.yaml")
+
+
+def test_project_demo_size_bands_load_for_potato() -> None:
+    policies = load_policies()
+    strict = policies.policy("potato")
+    demo = policies.policy("potato", demo=True)
+    assert strict.bands is not None  # published-reference bands (40/60 mm)
+    assert [b.min_mm for b in strict.bands] == [0.0, 40.0, 60.0]
+    assert demo.bands is not None and len(demo.bands) == 3
+    assert [b.name for b in demo.bands] == ["small", "medium", "large"]
+    assert [b.min_mm for b in demo.bands] == [0.0, 45.0, 65.0]
+    assert demo.demo is True
+    assert demo.approval_status == "ASSESSMENT_DEMO_ONLY"
+
+
+def test_size_bands_validation_rejects_broken_tables(tmp_path) -> None:
+    broken = [
+        ("single_band", [{"name": "small", "min_mm": 0}]),
+        ("duplicate_names", [{"name": "a", "min_mm": 0}, {"name": "A", "min_mm": 10}]),
+        ("first_not_zero", [{"name": "a", "min_mm": 5}, {"name": "b", "min_mm": 10}]),
+        ("not_ascending", [{"name": "a", "min_mm": 0}, {"name": "b", "min_mm": 50}, {"name": "c", "min_mm": 30}]),
+        ("bad_edge", [{"name": "a", "min_mm": 0}, {"name": "b", "min_mm": "big"}]),
+        ("empty_name", [{"name": "", "min_mm": 0}, {"name": "b", "min_mm": 10}]),
+    ]
+    for label, bands in broken:
+        path = write_yaml(tmp_path / f"{label}.yaml", policy_payload(size_bands=bands))
+        with pytest.raises(ConfigError):
+            load_policies(path)
+
+
+def test_strict_size_bands_load_when_approved(tmp_path) -> None:
+    bands = [
+        {"name": "small", "min_mm": 0},
+        {"name": "medium", "min_mm": 45},
+        {"name": "large", "min_mm": 65},
+    ]
+    path = write_yaml(
+        tmp_path / "bands.yaml",
+        policy_payload(
+            size_bands=bands,
+            threshold_mm=45.0,
+            approval_status="APPROVED_SOURCE",
+            threshold_provenance={
+                "status": "APPROVED_SOURCE",
+                "source": "unit-test buyer specification",
+            },
+        ),
+    )
+    policies = load_policies(path)
+    strict = policies.policy("potato")
+    assert strict.bands is not None and len(strict.bands) == 3
+    assert strict.approval_status == "APPROVED_SOURCE"
+
+
+def test_registry_covers_twenty_plus_gradeable_crops() -> None:
+    policies = load_policies()
+    gradeable = [k for k in policies.crop_keys if policies.policy(k).threshold_mm is not None]
+    refused = {k for k in policies.crop_keys if policies.policy(k).threshold_mm is None}
+    assert len(gradeable) >= 21
+    assert refused == {"coriander", "pumpkin", "ash_gourd"}
+    # Hindi/common aliases resolve to the right policy.
+    for alias, key in [
+        ("baingan", "brinjal"),
+        ("karela", "bitter_gourd"),
+        ("turai", "ridge_gourd"),
+        ("lauki", "bottle_gourd"),
+        ("tindora", "ivy_gourd"),
+        ("parwal", "pointed_gourd"),
+        ("gajar", "carrot"),
+        ("hari_mirch", "green_chilli"),
+        ("shakarkand", "sweet_potato"),
+        ("shimla_mirch", "capsicum"),
+        ("chukandar", "beetroot"),
+        ("shalgam", "turnip"),
+    ]:
+        assert policies.policy(alias).crop_key == key
+
+
+def test_all_gradeable_crops_carry_provenance() -> None:
+    policies = load_policies()
+    for key in policies.crop_keys:
+        policy = policies.policy(key)
+        if policy.threshold_mm is None:
+            continue
+        assert policy.approval_status == "PUBLISHED_REFERENCE", key
+        assert policy.provenance and policy.provenance["source"].strip(), key
+        assert policy.provenance["definition"].strip(), key
+
+
+def test_pumpkin_and_ash_gourd_are_honestly_unsupported() -> None:
+    policies = load_policies()
+    for key in ("pumpkin", "ash_gourd"):
+        policy = policies.policy(key)
+        assert policy.threshold_mm is None
+        assert policies.ontology(key).supported is False

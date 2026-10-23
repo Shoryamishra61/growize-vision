@@ -23,6 +23,7 @@ from growize_vision.crop_identity import (  # noqa: E402
     DEFAULT_DEEP_CLASSIFIER_PATH,
     CropIdentityService,
 )
+from growize_vision.real_photos import verify_original_photo, verify_specimen_splits  # noqa: E402
 
 
 def main() -> None:
@@ -33,18 +34,21 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--variant", choices=["clean", "text", "rotate90", "rotate45", "dim", "warm", "cool", "blur", "zoom_out", "perspective2d"], default="clean")
+    parser.add_argument("--variant", choices=["clean"], default="clean")
     args = parser.parse_args()
     torch.set_num_threads(4)
     service = CropIdentityService(deep_classifier_path=args.checkpoint)
     if not service.is_deep:
         raise RuntimeError("Deep checkpoint unavailable; refusing to benchmark a different provider")
     rows = [json.loads(line) for line in args.inventory.read_text(encoding="utf-8").splitlines()]
+    verify_specimen_splits([row for row in rows if row.get("split") != "quarantine"])
     rows = [r for r in rows if r.get("split", r.get("original_split")) == args.split and r.get("label") in service.classes]
     if args.limit:
         rows = rows[:args.limit]
     if not rows:
         raise ValueError("No eligible rows")
+    for row in rows:
+        verify_original_photo(row, ROOT)
     args.output.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
     results = []
