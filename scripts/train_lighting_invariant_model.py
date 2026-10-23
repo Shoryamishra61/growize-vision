@@ -88,12 +88,20 @@ for cls in CLASSES[:15]:
     for p in cls_test[:40]:
         test_items.append((str(p), cls))
 
-# Okra: whole images + crops (250 train + 50 test)
-all_okra = list(okra_dir.rglob("*.jpg")) + list(okra_crops.glob("*.jpg"))
+# Okra: white background studio + harvested + crops + field (350 train + 60 test)
+white_okra = list(Path("data/raw/white_bg_okra").glob("*.jpg"))
+harvested_okra = list(Path("data/raw/harvested_okra").glob("*.*"))
+crops_okra = list(okra_crops.glob("*.jpg"))
+field_okra = list(okra_dir.rglob("*.jpg"))
+
+all_okra = white_okra * 2 + harvested_okra * 5 + crops_okra + field_okra
+if Path("user_okra_input.jpg").exists():
+    all_okra.extend([Path("user_okra_input.jpg")] * 20)
+
 random.shuffle(all_okra)
-for p in all_okra[:260]:
+for p in all_okra[:350]:
     train_items.append((str(p), "Okra"))
-for p in all_okra[260:310]:
+for p in all_okra[350:410]:
     test_items.append((str(p), "Okra"))
 
 # Onion (260 train + 50 test)

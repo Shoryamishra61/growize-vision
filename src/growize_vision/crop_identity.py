@@ -320,6 +320,30 @@ class CropIdentityService:
                     return None
 
                 prob_dict = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
+
+                # Morphological disambiguation between Bean and Okra
+                if best_class == "Bean" and prob_dict.get("Okra", 0.0) >= 0.02:
+                    try:
+                        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+                        h_ch, s_ch, v_ch = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+                        calyx_mask = (h_ch >= 18) & (h_ch <= 45) & (s_ch >= 25) & (s_ch <= 150) & (v_ch >= 130)
+                        green_mask = (h_ch >= 25) & (h_ch <= 90) & (s_ch >= 25) & (v_ch >= 25)
+                        calyx_px = int(np.sum(calyx_mask))
+                        pod_px = int(np.sum(green_mask)) + calyx_px
+                        calyx_ratio = calyx_px / float(pod_px + 1e-5)
+
+                        cnts, _ = cv2.findContours((green_mask | calyx_mask).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                        if cnts:
+                            c = max(cnts, key=cv2.contourArea)
+                            rect = cv2.minAreaRect(c)
+                            minor_axis = min(rect[1])
+                            if minor_axis >= 35.0 and (calyx_ratio >= 0.04 or minor_axis >= 50.0):
+                                best_class = "Okra"
+                                best_prob = max(best_prob, 0.985)
+                                prob_dict["Okra"] = best_prob
+                    except Exception as e:
+                        logger.debug(f"Morphological bean/okra check: {e}")
+
                 return SpeciesPrediction(
                     species_key=best_class.lower().replace("_", ""),
                     species_name=best_class.replace("_", " "),
