@@ -280,6 +280,41 @@ def summary_uncalibrated_html(
     """
 
 
+def summary_non_produce_html(reason: str = "NON_PRODUCE_DOCUMENT_OR_TEXT") -> str:
+    clean_title = "Non-Vegetable / Document Detected"
+    if "DOCUMENT" in reason or "TEXT" in reason:
+        clean_title = "Document / Handwriting Detected"
+        msg = "The image contains handwriting, text, or paper markings. Growize Vision rejects non-produce items to eliminate hallucinations."
+    elif "BLUE_INK" in reason:
+        clean_title = "Artificial Ink Detected"
+        msg = "Blue/cyan ink detected on paper. Growize Vision only grades natural agricultural produce."
+    elif "EMPTY" in reason:
+        clean_title = "Empty Scene Detected"
+        msg = "No produce found in frame. Please place a vegetable in the camera view."
+    elif "DARK" in reason:
+        clean_title = "Camera Feed Too Dark"
+        msg = "The frame is underexposed. Please improve lighting conditions."
+    else:
+        clean_title = "Not Produce · Non-Vegetable"
+        msg = "No recognizable vegetable detected in the scene. Please place fresh produce in view."
+
+    return f"""
+    <div class="gv-result-card gv-review">
+      <div class="gv-kicker">Produce Verification Gate</div>
+      <div class="gv-headline">{html.escape(clean_title)}</div>
+      <div class="gv-measurement">{html.escape(reason)}</div>
+      <div class="gv-chip-row">
+        <span class="gv-chip">Gate: REJECTED</span>
+        <span class="gv-chip">Zero Hallucination</span>
+        <span class="gv-chip">Fail-Proof Safety</span>
+      </div>
+      <div style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; padding: 10px 14px; margin: 12px 0; border-radius: 4px; font-size: 0.9rem; color: #fca5a5;">
+        <b>Non-Produce Refusal:</b> {html.escape(msg)}
+      </div>
+    </div>
+    """
+
+
 def summary_ready_html() -> str:
     return """
     <div class="gv-result-card gv-review">
@@ -365,6 +400,20 @@ def inspect_image_ui(
             max_pixels=SETTINGS.max_image_pixels,
             max_bytes=SETTINGS.max_upload_bytes,
         )
+        # Gate 0: Anti-hallucination produce presence & non-produce rejection
+        is_present, presence_reason = IDENTITY_SERVICE.detect_produce_presence(decoded.bgr)
+        if not is_present:
+            summary_card = summary_non_produce_html(presence_reason)
+            table_data = [["—", "NOT_PRODUCE", "—", presence_reason, "—", "—", "Refusal", "Non-produce or document safely rejected"]]
+            rgb = bgr_to_rgb(decoded.bgr)
+            return (
+                rgb,
+                summary_card,
+                table_data,
+                {"status": "NOT_PRODUCE", "reason": presence_reason},
+                [],
+            )
+
         context = MediaContext(
             source_type=SourceType.IMAGE,
             source_id=Path(image_path).name,
@@ -491,6 +540,20 @@ def live_inspect_ui(
         frame_rgb = frame_rgb.get("data")
     try:
         frame_bgr = rgb_to_bgr(np.asarray(frame_rgb))
+        # Gate 0: Anti-hallucination produce presence & non-produce rejection
+        is_present, presence_reason = IDENTITY_SERVICE.detect_produce_presence(frame_bgr)
+        if not is_present:
+            summary_card = summary_non_produce_html(presence_reason)
+            table_data = [["—", "NOT_PRODUCE", "—", presence_reason, "—", "—", "Refusal", "No valid vegetable in camera view"]]
+            session.last_annotated_rgb = bgr_to_rgb(frame_bgr)
+            return (
+                session.last_annotated_rgb,
+                summary_card,
+                table_data,
+                {"status": "NOT_PRODUCE", "reason": presence_reason},
+                session,
+            )
+
         context = MediaContext(
             source_type=SourceType.WEBCAM,
             source_id="laptop_camera",

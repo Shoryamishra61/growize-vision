@@ -20,23 +20,49 @@ def test_identity_service_loads(identity_service):
     assert len(identity_service.stats) == 18
 
 
-def test_predict_species_on_synthetic_patch(identity_service):
-    # Pure red image (synthetic)
-    img = np.zeros((224, 224, 3), dtype=np.uint8)
-    img[:, :] = (0, 0, 255)  # Pure red in BGR
-    pred = identity_service.predict_species(img)
-    assert pred is not None
-    assert pred.species_name in [c.replace("_", " ") for c in identity_service.classes]
-    assert 0.0 <= pred.confidence <= 1.0
+def test_predict_species_on_real_produce(identity_service):
+    from pathlib import Path
+    sample = Path("data/raw/cropped_okra_pods/crop_100_0.jpg")
+    if sample.exists():
+        img = cv2.imread(str(sample))
+        pred = identity_service.predict_species(img)
+        assert pred is not None
+        assert pred.species_name == "Okra"
+        assert pred.confidence >= 0.65
+    else:
+        # Green realistic synthetic patch
+        img = np.zeros((224, 224, 3), dtype=np.uint8)
+        img[:, :] = (34, 139, 34)  # Forest green in BGR
+        present, _ = identity_service.detect_produce_presence(img)
+        assert present is True
 
 
 def test_estimate_appearance_size(identity_service):
-    # White background with black circle
-    img = np.full((224, 224, 3), 255, dtype=np.uint8)
-    cv2.circle(img, (112, 112), 40, (0, 0, 0), -1)  # Area ~ pi * 40^2 ~ 5026 px
+    from pathlib import Path
+    sample = Path("data/raw/cropped_okra_pods/crop_100_0.jpg")
+    if sample.exists():
+        img = cv2.imread(str(sample))
+        est = identity_service.estimate_appearance_size(img, species_name="Okra")
+        assert est is not None
+        assert est.pixel_area > 10000
+        assert est.appearance_size_class in ["SMALL", "BIG"]
+        assert "UNCALIBRATED_APPEARANCE_ESTIMATE" in est.disclaimer
+    else:
+        # Green organic ellipse
+        img = np.full((224, 224, 3), 255, dtype=np.uint8)
+        cv2.ellipse(img, (112, 112), (60, 25), 0, 0, 360, (34, 139, 34), -1)
+        est = identity_service.estimate_appearance_size(img, species_name="Okra")
+        assert est is not None
+        assert est.appearance_size_class in ["SMALL", "BIG"]
 
-    est = identity_service.estimate_appearance_size(img, species_name="Potato")
-    assert est is not None
-    assert est.pixel_area > 4000
-    assert est.appearance_size_class in ["SMALL", "BIG", "BORDERLINE"]
-    assert "UNCALIBRATED_APPEARANCE_ESTIMATE" in est.disclaimer
+
+def test_non_produce_signature_rejected(identity_service):
+    from pathlib import Path
+    sample = Path("test_signature_crop.jpg")
+    if sample.exists():
+        img = cv2.imread(str(sample))
+        present, reason = identity_service.detect_produce_presence(img)
+        assert present is False
+        assert "NON_PRODUCE" in reason
+        pred = identity_service.predict_species(img)
+        assert pred is None

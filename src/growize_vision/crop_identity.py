@@ -117,7 +117,7 @@ class CropIdentityService:
         """Verify whether an actual vegetable/produce item is physically present.
 
         Prevents hallucinating produce on blank walls, empty tables, ambient lighting,
-        or hands without vegetables.
+        paper documents, handwriting, text, or hands without vegetables.
         """
         if img_bgr is None or img_bgr.size == 0:
             return False, "EMPTY_FRAME"
@@ -130,23 +130,67 @@ class CropIdentityService:
         hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
         lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB)
 
-        std_gray = float(np.std(gray))
         sat = hsv[:, :, 1]
-        chroma = np.sqrt((lab[:, :, 1].astype(float) - 128.0) ** 2 + (lab[:, :, 2].astype(float) - 128.0) ** 2)
+        val = hsv[:, :, 2]
+        h_ch = hsv[:, :, 0]
+
+        mean_val = float(np.mean(val))
+        if mean_val < 20.0:
+            return False, "FRAME_TOO_DARK"
+
+        std_gray = float(np.std(gray))
         sat_p95 = float(np.percentile(sat, 95))
+        chroma = np.sqrt((lab[:, :, 1].astype(float) - 128.0) ** 2 + (lab[:, :, 2].astype(float) - 128.0) ** 2)
         chroma_p95 = float(np.percentile(chroma, 95))
 
         # Empty scene check: pure monochrome / low-contrast ambient background
         if std_gray < 8.0 and sat_p95 < 25.0 and chroma_p95 < 12.0:
             return False, "EMPTY_UNIFORM_SCENE"
 
-        # If spatial contrast exists (e.g. object on table, or test fixture circle), check for contour:
+        # Edge-Case Gate 1: Non-Produce / Document / Text / Signature Filter
+        # Paper / white background detection:
+        white_paper = (gray >= 165) & (sat <= 50)
+        white_fraction = float(np.mean(white_paper))
+
+        if white_fraction >= 0.40:
+            ink_mask = ((gray < 160) | (sat > 60)).astype(np.uint8)
+            total_fg = int(np.sum(ink_mask > 0))
+            if total_fg < 150:
+                return False, "NON_PRODUCE_EMPTY_PAPER"
+
+            cnts, _ = cv2.findContours(ink_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if not cnts:
+                return False, "NON_PRODUCE_DOCUMENT"
+
+            c = max(cnts, key=cv2.contourArea)
+            area = float(cv2.contourArea(c))
+            x, y, bw, bh = cv2.boundingRect(c)
+            fill_ratio = area / float(bw * bh) if bw * bh > 0 else 0.0
+
+            hull = cv2.convexHull(c)
+            hull_area = float(cv2.contourArea(hull))
+            solidity = area / hull_area if hull_area > 0 else 0.0
+
+            # Rejection rule A: Thin line strokes, hollow bounding box, or handwriting
+            if fill_ratio < 0.25 or solidity < 0.35:
+                return False, f"NON_PRODUCE_DOCUMENT_OR_TEXT (fill={fill_ratio:.2f}, solidity={solidity:.2f})"
+
+            # Rejection rule B: Artificial blue/cyan ballpoint ink
+            b_ch = img_bgr[:, :, 0]
+            r_ch = img_bgr[:, :, 2]
+            fg_idx = ink_mask > 0
+            blue_ink = (b_ch > r_ch + 10) & (h_ch >= 95) & (h_ch <= 140) & fg_idx
+            blue_ratio = float(np.sum(blue_ink)) / float(total_fg)
+            if blue_ratio >= 0.15:
+                return False, f"NON_PRODUCE_BLUE_INK (blue_ratio={blue_ratio:.2f})"
+
+        # If spatial contrast exists, check for solid organic contour
         if std_gray >= 12.0:
             blur = cv2.GaussianBlur(gray, (5, 5), 0)
             _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             total_pixels = float(h * w)
-            large_cnts = [c for c in cnts if cv2.contourArea(c) >= 0.010 * total_pixels]
+            large_cnts = [c for c in cnts if cv2.contourArea(c) >= 0.015 * total_pixels]
             if large_cnts:
                 return True, "PRODUCE_OBJECT_PRESENT"
 
@@ -155,6 +199,51 @@ class CropIdentityService:
             return True, "CHROMATIC_PRODUCE_PRESENT"
 
         return False, "NO_PRODUCE_DETECTED"
+
+    @staticmethod
+    def verify_species_biology(img_bgr: np.ndarray, species_name: str) -> tuple[bool, str]:
+        """Verify that the predicted crop species matches physical/biological pigmentation."""
+        if img_bgr is None or img_bgr.size == 0:
+            return False, "EMPTY_IMAGE"
+
+        hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        h = hsv[:, :, 0]
+        s = hsv[:, :, 1]
+        v = hsv[:, :, 2]
+        gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+
+        # Foreground mask excluding extreme white or black margins
+        fg_mask = (gray < 235) & (gray > 20)
+        total_fg = int(np.sum(fg_mask))
+        if total_fg < 100:
+            return False, "FOREGROUND_EMPTY"
+
+        sp = species_name.lower().replace(" ", "_")
+        green_mask = (h >= 25) & (h <= 90) & (s >= 25) & (v >= 25) & fg_mask
+        green_ratio = float(np.sum(green_mask)) / float(total_fg)
+
+        red_orange_mask = (((h <= 22) | (h >= 165)) & (s >= 35) & (v >= 35)) & fg_mask
+        red_orange_ratio = float(np.sum(red_orange_mask)) / float(total_fg)
+
+        purple_mask = ((h >= 120) & (h <= 165) & (s >= 25) & (v >= 20)) & fg_mask
+        purple_ratio = float(np.sum(purple_mask)) / float(total_fg)
+
+        strictly_green = {
+            "okra", "cucumber", "bitter_gourd", "bottle_gourd", "bean", "spinach", "broccoli"
+        }
+        if sp in strictly_green and green_ratio < 0.10:
+            return False, f"BIOLOGICAL_MISMATCH: {species_name} requires >=10% green pigment, found {green_ratio*100:.1f}%"
+
+        if sp == "carrot" and red_orange_ratio < 0.10:
+            return False, f"BIOLOGICAL_MISMATCH: Carrot requires >=10% orange/red pigment, found {red_orange_ratio*100:.1f}%"
+
+        if sp == "tomato" and red_orange_ratio < 0.08 and green_ratio < 0.08:
+            return False, f"BIOLOGICAL_MISMATCH: Tomato requires >=8% red/orange/green pigment"
+
+        if sp == "brinjal" and purple_ratio < 0.06 and green_ratio < 0.08:
+            return False, f"BIOLOGICAL_MISMATCH: Brinjal requires purple or green pigment"
+
+        return True, "BIOLOGICALLY_VALID"
 
     def extract_features(self, img_bgr: np.ndarray) -> np.ndarray | None:
         if img_bgr is None or img_bgr.size == 0:
@@ -217,6 +306,19 @@ class CropIdentityService:
                 best_idx = int(np.argmax(probs))
                 best_class = self.classes[best_idx]
                 best_prob = float(probs[best_idx])
+
+                # Confidence Floor Gate: Reject ambiguous predictions (< 0.65)
+                CONFIDENCE_FLOOR = 0.65
+                if best_prob < CONFIDENCE_FLOOR:
+                    logger.info(f"Species prediction {best_class} rejected: confidence {best_prob:.3f} below floor {CONFIDENCE_FLOOR}")
+                    return None
+
+                # Biological Pigmentation Gate: Verify physical color matches species biology
+                is_bio_valid, bio_reason = self.verify_species_biology(img_bgr, best_class)
+                if not is_bio_valid:
+                    logger.info(f"Species prediction {best_class} rejected: {bio_reason}")
+                    return None
+
                 prob_dict = {self.classes[i]: float(probs[i]) for i in range(len(self.classes))}
                 return SpeciesPrediction(
                     species_key=best_class.lower().replace("_", ""),
@@ -235,6 +337,15 @@ class CropIdentityService:
         best_idx = int(np.argmax(probs))
         best_class = self.classes[best_idx]
         best_prob = float(probs[best_idx])
+
+        # Confidence Floor Gate
+        if best_prob < 0.65:
+            return None
+
+        # Biological validation
+        is_bio_valid, _ = self.verify_species_biology(img_bgr, best_class)
+        if not is_bio_valid:
+            return None
 
         # Morphological sanity check for green elongated crops
         if best_class == "Capsicum":
@@ -284,12 +395,17 @@ class CropIdentityService:
 
         if not target_species and self.is_classifier_available:
             pred = self.predict_species(img_bgr)
-            if pred and pred.confidence > 0.4:
+            if pred and pred.confidence >= 0.65:
                 norm_name = pred.species_name.replace(" ", "_")
                 target_species = norm_name
 
         if not target_species:
-            target_species = "Potato"
+            return None
+
+        # Biological validation: verify pigmentation matches species
+        is_bio_valid, _ = self.verify_species_biology(img_bgr, target_species)
+        if not is_bio_valid:
+            return None
 
         # Segmentation & Contour Analysis
         hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
@@ -353,46 +469,47 @@ class CropIdentityService:
 
         if sp_key in elongated_crops:
             # For elongated produce (Okra, Cucumber, Carrot, Radish, Bitter/Bottle Gourd, Beans):
-            # A full-grown specimen or cluster occupies significant frame span or area.
-            if span_fraction >= 0.35 or fraction >= 0.14 or (aspect_ratio >= 3.0 and span_fraction >= 0.28):
+            # BIG requires: substantial area (ratio >= 0.80 or fraction >= 0.14) AND span >= 0.32
+            # SMALL if: ratio < 0.65 or span < 0.28 or fraction < 0.08
+            if (ratio >= 0.80 and span_fraction >= 0.32) or (fraction >= 0.14 and span_fraction >= 0.35) or (ratio >= 1.20):
                 size_class = "BIG"
-            elif span_fraction < 0.25 and fraction < 0.07:
+            elif ratio < 0.65 or span_fraction < 0.28 or fraction < 0.08:
                 size_class = "SMALL"
             else:
-                size_class = "BIG" if span_fraction >= 0.30 else "SMALL"
+                size_class = "BIG" if (ratio >= 0.72 and span_fraction >= 0.32) else "SMALL"
 
         elif sp_key in massive_head_crops:
             # Massive head produce (Cabbage, Cauliflower, Broccoli, Pumpkin, Papaya):
-            if fraction >= 0.12 or span_fraction >= 0.30 or ecd_fraction >= 0.35:
+            if ratio >= 0.85 or fraction >= 0.14 or ecd_fraction >= 0.36:
                 size_class = "BIG"
-            elif fraction < 0.06:
+            elif ratio < 0.68 or fraction < 0.08:
                 size_class = "SMALL"
             else:
-                size_class = "BIG"
+                size_class = "BIG" if ratio >= 0.75 else "SMALL"
 
         elif sp_key in bulbous_compact_crops:
             # Spherical & bulbous produce (Potato, Tomato, Onion, Capsicum, Brinjal):
-            if fraction >= 0.11 or span_fraction >= 0.32 or ecd_fraction >= 0.36:
+            if ratio >= 0.85 or fraction >= 0.12 or ecd_fraction >= 0.35:
                 size_class = "BIG"
-            elif fraction < 0.07 and span_fraction < 0.24:
+            elif ratio < 0.68 or fraction < 0.08:
                 size_class = "SMALL"
             else:
-                size_class = "BIG" if fraction >= 0.09 else "SMALL"
+                size_class = "BIG" if ratio >= 0.75 else "SMALL"
 
         elif sp_key in leafy_crops:
             # Leafy bunches (Spinach):
-            if fraction >= 0.14 or span_fraction >= 0.35:
+            if ratio >= 0.85 or fraction >= 0.15:
                 size_class = "BIG"
-            else:
-                size_class = "SMALL" if fraction < 0.08 else "BIG"
-
-        else:
-            if fraction >= 0.12 or span_fraction >= 0.32:
-                size_class = "BIG"
-            elif fraction < 0.07:
+            elif ratio < 0.68 or fraction < 0.08:
                 size_class = "SMALL"
             else:
+                size_class = "BIG" if ratio >= 0.75 else "SMALL"
+
+        else:
+            if ratio >= 0.85 or fraction >= 0.12:
                 size_class = "BIG"
+            else:
+                size_class = "SMALL"
 
         return AppearanceSizeEstimate(
             species_key=target_species.lower(),
@@ -407,7 +524,7 @@ class CropIdentityService:
     def render_appearance_overlay(
         self, img_bgr: np.ndarray, est: AppearanceSizeEstimate, species_name: str | None = None
     ) -> np.ndarray:
-        if img_bgr is None or img_bgr.size == 0:
+        if img_bgr is None or img_bgr.size == 0 or est is None:
             return img_bgr
 
         canvas = img_bgr.copy()
@@ -437,7 +554,15 @@ class CropIdentityService:
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
         cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        valid = [c for c in cnts if cv2.contourArea(c) > 1500]
+        # Require substantial contour area (> 1200 px) AND solid organic fill (> 0.20)
+        valid = []
+        for c in cnts:
+            c_area = cv2.contourArea(c)
+            if c_area > 1200:
+                bx, by, bw, bh = cv2.boundingRect(c)
+                if (c_area / float(bw * bh)) >= 0.20:
+                    valid.append(c)
+
         valid.sort(key=cv2.contourArea, reverse=True)
 
         if valid:
@@ -449,12 +574,12 @@ class CropIdentityService:
                 badge_y = max(26, y - 8)
                 cv2.putText(canvas, label, (x + 4, badge_y), cv2.FONT_HERSHEY_DUPLEX, 0.72, (0, 255, 70), 2, cv2.LINE_AA)
 
-        pill_w = min(w - 20, 360)
-        pill_h = 36
-        sub = canvas[8:8+pill_h, 8:8+pill_w]
-        black_rect = np.zeros_like(sub)
-        cv2.addWeighted(sub, 0.25, black_rect, 0.75, 0, sub)
-        cv2.rectangle(canvas, (8, 8), (8 + pill_w, 8 + pill_h), (0, 230, 60), 1, cv2.LINE_AA)
-        cv2.putText(canvas, f"AI APPEARANCE SIZING: {est.appearance_size_class}", (18, 32), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+            pill_w = min(w - 20, 360)
+            pill_h = 36
+            sub = canvas[8:8+pill_h, 8:8+pill_w]
+            black_rect = np.zeros_like(sub)
+            cv2.addWeighted(sub, 0.25, black_rect, 0.75, 0, sub)
+            cv2.rectangle(canvas, (8, 8), (8 + pill_w, 8 + pill_h), (0, 230, 60), 1, cv2.LINE_AA)
+            cv2.putText(canvas, f"AI APPEARANCE SIZING: {est.appearance_size_class}", (18, 32), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
 
         return canvas
