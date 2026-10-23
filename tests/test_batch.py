@@ -59,14 +59,49 @@ def test_batch_binary_split_still_available() -> None:
         i for i in result.instances
         if i.decision and i.decision.size_class is not None
     ]
-    review = [
-        i for i in result.instances
-        if i.decision and i.decision.status is Status.REVIEW_BORDERLINE
-    ]
-    assert len(graded) == 2  # clear BIG and SMALL
-    assert len(review) == 1  # the median item sits inside the ±5% margin
+    # A sorter must label every item: near-cut items are assigned by exact
+    # position (with a note), never left in review.
+    assert len(graded) == 3
+    big = [i for i in graded if i.decision.size_class is SizeClass.BIG]
+    small = [i for i in graded if i.decision.size_class is SizeClass.SMALL]
+    assert len(big) == 2 and len(small) == 1
     reasons = " ".join(r for i in result.instances if i.decision for r in i.decision.reasons)
     assert "BATCH_RELATIVE_UNCALIBRATED" in reasons
+    assert "NEAR_BATCH_CUT" in reasons  # the median item sits on the cut
+
+
+def test_uniform_batch_labels_every_item_the_same() -> None:
+    """Three nearly identical potatoes: big/small is meaningless, all get 2."""
+    import cv2
+
+    rng = np.random.default_rng(9)
+    scene = np.full((560, 800, 3), 200, np.uint8)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    for cx, rx in ((160, 100), (400, 99), (630, 101)):
+        cv2.ellipse(scene, (cx, 280), (rx, 62), 0, 0, 360, (70, 150, 70), -1)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    service = InferenceService()
+    result = service.inspect_frame(
+        scene, request=InferenceRequest(crop_key="potato", batch_mode=True))
+    bands = [i.decision.band_name for i in result.instances if i.decision]
+    assert bands == ["2", "2", "2"]
+    reasons = " ".join(r for i in result.instances if i.decision for r in i.decision.reasons)
+    assert "UNIFORM_BATCH" in reasons
+
+
+def test_multiple_items_grade_automatically_without_batch_flag() -> None:
+    """The operator uploads a photo of several vegetables: no checkbox,
+    no crop picking — grading happens by itself, relative to the batch."""
+    service = InferenceService()
+    result = service.inspect_frame(
+        batch_scene(), request=InferenceRequest(crop_key="potato"))
+    assert result.status is Status.MULTIPLE_OBJECTS
+    assert any(r.startswith("BATCH_SPLIT:") for r in result.reasons)
+    bands = sorted(
+        (i.decision.band_name for i in result.instances if i.decision and i.decision.band_name),
+        key=int,
+    )
+    assert bands == ["1", "2", "3"]
 
 
 def test_batch_grades_without_any_crop_policy() -> None:

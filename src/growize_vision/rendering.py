@@ -25,10 +25,71 @@ _COLORS_BGR = {
 _WHITE = (245, 245, 245)
 _DARK = (22, 27, 34)
 _RED = (60, 60, 230)
+_NEUTRAL = (140, 180, 230)
+# Grade colours a sorter can read at a glance (BGR): orange = small,
+# amber = medium, green = big.
+_GRADE_COLOURS_BGR = {
+    "small": (10, 170, 255),
+    "medium": (40, 205, 255),
+    "big": (70, 210, 90),
+}
+_GRADE_NUMBERS = {"small": 1, "medium": 2, "big": 3}
+_NUMBER_WORDS = {"1": "small", "2": "medium", "3": "big"}
 
 
 def _colour_for(status: Status) -> tuple[int, int, int]:
     return _COLORS_BGR.get(status, (0, 191, 255))
+
+
+def _grade_word(decision) -> str | None:
+    """Plain size word for an accepted decision, or None."""
+    if decision is None or not decision.accepted:
+        return None
+    band = (decision.band_name or "").lower()
+    if decision.size_class is SizeClass.SMALL:
+        return "small"
+    if decision.size_class is SizeClass.BIG:
+        return "big"
+    if band in _NUMBER_WORDS:
+        return _NUMBER_WORDS[band]
+    if band in ("medium",):
+        return "medium"
+    if band in ("large", "big"):
+        return "big"
+    if decision.size_class is not None:
+        return decision.size_class.value.lower()
+    return None
+
+
+def _chip(
+    image: np.ndarray,
+    text: str,
+    x: int,
+    y: int,
+    colour: tuple[int, int, int],
+    *,
+    scale: float = 0.62,
+) -> None:
+    """Solid readable label chip with the grade colour as its border."""
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, 2)
+    pad = 5
+    x0, y0 = max(2, x), max(2, y - th - pad * 2)
+    cv2.rectangle(image, (x0, y0), (x0 + tw + pad * 2, y0 + th + pad * 2), _DARK, -1)
+    cv2.rectangle(
+        image,
+        (x0, y0),
+        (x0 + tw + pad * 2, y0 + th + pad * 2),
+        colour,
+        2,
+    )
+    _put_text(
+        image,
+        text,
+        (x0 + pad, y0 + th + pad),
+        scale=scale,
+        colour=colour,
+        thickness=2,
+    )
 
 
 def _put_text(
@@ -67,87 +128,40 @@ def _panel(
 
 
 def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
+    """Tight silhouette outline plus one readable grade chip per item.
+
+    No rotated bounding boxes, axis arrows, or raw status strings: operators
+    on a packing line need the item's outline and its size word, nothing else.
+    """
     contour = np.asarray(instance.contour_px, dtype=np.float32).reshape(-1, 1, 2)
     decision = instance.decision
-    status = decision.status if decision else Status.REVIEW_BORDERLINE
-    colour = _colour_for(status)
+    word = _grade_word(decision)
+    colour = _GRADE_COLOURS_BGR.get(word, _NEUTRAL)
+    points = contour.astype(np.int32)
+    # Subtle tint inside the item so the grade colour groups visually.
     fill = image.copy()
-    cv2.drawContours(fill, [contour.astype(np.int32)], -1, colour, thickness=-1)
-    cv2.addWeighted(fill, 0.20, image, 0.80, 0, dst=image)
-    cv2.drawContours(image, [contour.astype(np.int32)], -1, colour, 2, cv2.LINE_AA)
-
-    rect = cv2.minAreaRect(contour)
-    box = cv2.boxPoints(rect).astype(np.int32)
-    cv2.drawContours(image, [box.reshape(-1, 1, 2)], -1, colour, 1, cv2.LINE_AA)
-    (cx, cy), (rw, rh), angle = rect
-    if rw >= rh:
-        long_axis = ((box[0][0], box[0][1]), (box[1][0], box[1][1]))
-        short_axis = ((box[1][0], box[1][1]), (box[2][0], box[2][1]))
-    else:
-        long_axis = ((box[1][0], box[1][1]), (box[2][0], box[2][1]))
-        short_axis = ((box[0][0], box[0][1]), (box[1][0], box[1][1]))
-    cv2.arrowedLine(
-        image,
-        tuple(int(v) for v in long_axis[0]),
-        tuple(int(v) for v in long_axis[1]),
-        (52, 211, 153),
-        2,
-        cv2.LINE_AA,
-        tipLength=0.035,
-    )
-    cv2.arrowedLine(
-        image,
-        tuple(int(v) for v in short_axis[0]),
-        tuple(int(v) for v in short_axis[1]),
-        (180, 240, 200),
-        1,
-        cv2.LINE_AA,
-        tipLength=0.04,
-    )
+    cv2.drawContours(fill, [points], -1, colour, thickness=-1)
+    cv2.addWeighted(fill, 0.16, image, 0.84, 0, dst=image)
+    # Tight outline of the actual detected silhouette.
+    cv2.drawContours(image, [points], -1, colour, 3, cv2.LINE_AA)
 
     x, y, w, h = instance.bbox_px
-    label_y = max(18, y - 8)
-    band_grade_words = {"small": "1", "medium": "2", "large": "3"}
-    if decision and decision.accepted and decision.band_name:
-        band = decision.band_name.lower()
-        number = band if band.isdigit() else band_grade_words.get(band)
-        if number and number.isdigit():
-            headline = f"GRADE {number}"
-            if band in band_grade_words:
-                headline += f" · {band.upper()}"
-        else:
-            headline = decision.band_name.upper()
-    elif decision and decision.accepted and decision.size_class:
-        headline = decision.size_class.value
-    elif decision and decision.status != Status.CALIBRATION_REQUIRED:
-        headline = decision.status.value
-    else:
-        headline = ""
-    if headline:
-        _put_text(image, headline, (max(4, x), label_y), scale=0.62, colour=colour, thickness=2)
+    if word:
+        number = _GRADE_NUMBERS.get(word)
+        label = f"{word.upper()} ({number})" if number else word.upper()
+        _chip(image, label, max(4, x), max(26, y), colour)
+    elif instance.measurement is None:
+        # Ungraded item: small neutral tick so it is still visible.
+        _chip(image, "CHECK", max(4, x), max(26, y), _NEUTRAL, scale=0.5)
     if instance.measurement:
         m = instance.measurement
-        unit = m.unit
-        second = f"{m.value_mm:.1f} +/- {m.uncertainty_mm:.1f} {unit}"
+        second = f"{m.value_mm:.0f} +/- {m.uncertainty_mm:.0f} {m.unit}"
         _put_text(
             image,
             second,
-            (max(4, x), min(image.shape[0] - 8, label_y + 20)),
-            scale=0.46,
+            (max(4, x), min(image.shape[0] - 8, y + h + 18)),
+            scale=0.5,
             colour=_WHITE,
-            thickness=1,
-        )
-    if decision and decision.threshold_mm is not None and instance.measurement:
-        third = (
-            f"policy {decision.policy_version or '?'} | cutoff "
-            f"{decision.threshold_mm:.1f} {instance.measurement.unit}"
-        )
-        _put_text(
-            image,
-            third,
-            (max(4, x), min(image.shape[0] - 8, label_y + 38)),
-            scale=0.39,
-            colour=(205, 215, 225),
             thickness=1,
         )
 
@@ -168,13 +182,15 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
     line_h = max(18, int(min(h, w) * 0.031))
     lines: list[str] = []
     if result.status == Status.ACCEPTED and (result.size_class or result.size_band):
-        band_words = {"small": "1", "medium": "2", "large": "3"}
-        if result.size_band:
-            band = result.size_band.lower()
-            number = band if band.isdigit() else band_words.get(band)
-            grade = f"GRADE {number} · {band.upper()}" if number else result.size_band.upper()
+        band = (result.size_band or "").lower()
+        word = _NUMBER_WORDS.get(band) or ({"large": "big"}.get(band))
+        if not word and result.size_class:
+            word = result.size_class.value.lower()
+        if word:
+            number = _GRADE_NUMBERS.get(word)
+            grade = f"{word.upper()} ({number})" if number else word.upper()
         else:
-            grade = result.size_class.value
+            grade = (result.size_band or result.size_class.value).upper()
         lines.append(f"RESULT  {grade}")
     elif result.calibration and not result.calibration.valid:
         lines.append("UNSCALED APPEARANCE MODE")
@@ -220,7 +236,10 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
         if i == 0:
             colour = _colour_for(result.status)
             if result.status == Status.ACCEPTED:
-                colour = _colour_for(result.size_class or Status.ACCEPTED)
+                word = None
+                if len(result.instances) == 1:
+                    word = _grade_word(result.instances[0].decision)
+                colour = _GRADE_COLOURS_BGR.get(word, _colour_for(Status.ACCEPTED))
                 if result.policy and result.policy.demo:
                     colour = (0, 191, 255)
         if "DEMO" in line or "NOT VALID" in line:

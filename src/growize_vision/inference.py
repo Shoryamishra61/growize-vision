@@ -246,22 +246,6 @@ class InferenceService:
             calibration = self._apply_station_calibration(
                 station_key, calibration, processing_bgr.shape[:2], warnings
             )
-        if (
-            not calibration.valid
-            and request.allow_scale_estimate
-            and not request.batch_mode
-            and not self._crop_has_appearance_priors(request.crop_key)
-        ):
-            # Last-resort tier for single vegetables with no reference at all:
-            # a distance-assumed estimated scale.  Wide uncertainty keeps
-            # borderline items in review instead of guessing a grade.  Batch
-            # mode never uses it: ranking items within one frame is sharper
-            # than a ±30% distance guess shared by every item.
-            calibration = calibrate_from_camera_prior(
-                processing_bgr.shape, self.settings.calibration
-            )
-            if calibration.valid:
-                warnings.extend(calibration.warnings)
         timings["calibration_ms"] = (time.perf_counter() - marker_start) * 1000.0
         warnings.extend(calibration.warnings)
         if not calibration.valid:
@@ -342,6 +326,29 @@ class InferenceService:
                         "carry this uncertainty."
                     )
             timings["crop_identity_ms"] = (time.perf_counter() - identity_started) * 1000
+
+        if not calibration.valid and len(segmentation.objects) > 1 and not request.batch_mode:
+            # Fully automated flow: several vegetables in frame means a batch,
+            # so grade them relative to each other without asking the operator
+            # to tick anything.  A real marker/station calibration still wins.
+            request = replace(request, batch_mode=True)
+        if (
+            not calibration.valid
+            and request.allow_scale_estimate
+            and not request.batch_mode
+            and len(segmentation.objects) == 1
+            and not self._crop_has_appearance_priors(request.crop_key)
+        ):
+            # Last-resort tier for single vegetables with no reference at all:
+            # a distance-assumed estimated scale.  Wide uncertainty keeps
+            # borderline items in review instead of guessing a grade.  Batches
+            # never use it: ranking items within one frame is sharper than a
+            # ±30% distance guess shared by every item.
+            calibration = calibrate_from_camera_prior(
+                processing_bgr.shape, self.settings.calibration
+            )
+            if calibration.valid:
+                warnings.extend(calibration.warnings)
 
         policy = None
         policy_error: str | None = None
@@ -712,47 +719,47 @@ class InferenceService:
         margin = 0.05
         cuts = [float(np.quantile(values, k / grades)) for k in range(1, grades)]
         cut_text = "/".join(f"{cut:.0f}" for cut in cuts)
+        # A sorter must label every item: when all items are essentially the
+        # same size (within 10%), "big vs small" is meaningless for this
+        # batch, so everyone gets the middle grade with an explicit note.
+        smallest, largest = values[0], values[-1]
+        uniform = smallest > 0 and (largest / smallest) < 1.10
         total = len(measured)
         for rank, (instance, value) in enumerate(measured, start=1):
-            band_index = 0
-            for cut in cuts:
-                if value >= cut:
-                    band_index += 1
             near_cut = any(abs(value - cut) <= cut * margin for cut in cuts)
+            if uniform:
+                grade_number = (grades + 1) // 2
+            else:
+                grade_number = 1 + sum(1 for cut in cuts if value >= cut)
+            if grade_number == 1:
+                word, size_class = "small", SizeClass.SMALL
+            elif grade_number == grades:
+                word, size_class = "big", SizeClass.BIG
+            else:
+                word, size_class = "medium", None
             reasons = [
-                f"BATCH_RELATIVE: item {rank}/{total} measures {value:.0f} px "
-                f"against batch cut point(s) {cut_text} px "
-                f"({grades} numeric grades, 1 = smallest).",
+                f"BATCH_RELATIVE: item {rank}/{total} is {word.upper()} "
+                f"(grade {grade_number} of {grades}); measures {value:.0f} px "
+                f"against batch cut point(s) {cut_text} px.",
                 "BATCH_RELATIVE_UNCALIBRATED: sizes are comparable within "
                 "this frame only; not millimetres, not comparable across "
                 "batches or camera positions.",
             ]
+            if uniform:
+                reasons.append(
+                    "UNIFORM_BATCH: all items are within 10% of each other, so "
+                    "every item receives the same grade."
+                )
+            elif near_cut:
+                reasons.append(
+                    "NEAR_BATCH_CUT: item is within ±5% of a cut point; grade "
+                    "assigned by its exact position."
+                )
             if policy is None:
                 reasons.append(
                     "CROP_UNRESOLVED: no crop policy applied; grades rank "
                     "projected size within this frame without a crop claim."
                 )
-            if near_cut:
-                instance.decision = GradeDecision(
-                    size_class=None,
-                    status=Status.REVIEW_BORDERLINE,
-                    band_name=None,
-                    reasons=[
-                        *reasons,
-                        "VALUE_NEAR_BATCH_CUT: item sits within the ±5% margin "
-                        "of a cut point; grade withheld rather than guessed.",
-                    ],
-                    policy=policy,
-                    policy_version=getattr(policy, "policy_version", None),
-                )
-                continue
-            grade_number = band_index + 1
-            size_class = None
-            if grade_number == 1:
-                size_class = SizeClass.SMALL
-            elif grade_number == grades:
-                size_class = SizeClass.BIG
-            reasons[0] += f" Grade {grade_number}."
             instance.decision = GradeDecision(
                 size_class=size_class,
                 status=Status.ACCEPTED,
@@ -799,28 +806,23 @@ class InferenceService:
                 and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
             ]
             if batch_graded:
-                counts: dict[str, int] = {}
-                review = 0
-                for i in batch_graded:
-                    band = i.decision.band_name
-                    if band:
-                        counts[band] = counts.get(band, 0) + 1
-                    else:
-                        review += 1
-                summary = ", ".join(
-                    f"{counts[band]} x grade {band}"
-                    for band in sorted(counts, key=int)
-                )
-                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
                 small = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.SMALL)
-                extra = f" ({big} BIG, {small} SMALL)" if big or small else ""
+                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
+                medium = len(batch_graded) - small - big
+                parts = []
+                if small:
+                    parts.append(f"{small} SMALL")
+                if medium:
+                    parts.append(f"{medium} MEDIUM")
+                if big:
+                    parts.append(f"{big} BIG")
                 return (
                     Status.MULTIPLE_OBJECTS,
                     None,
                     [
-                        f"BATCH_SPLIT: {summary}{extra}, {review} REVIEW — numeric "
-                        "grades are relative to this frame's items; 1 = smallest, "
-                        "no millimetres."
+                        f"BATCH_SPLIT: {' · '.join(parts)} — every item ranked "
+                        "by size within this frame (1 = smallest, 3 = biggest; "
+                        "relative sizes, not millimetres)."
                     ],
                 )
             statuses = [i.decision.status if i.decision else Status.REVIEW_BORDERLINE for i in instances]

@@ -54,21 +54,21 @@ REFERENCE_UNCERTAINTY = {
 
 MESSAGES = {
     Status.CALIBRATION_REQUIRED: (
-        "Scale needed",
-        "No physical scale in this photo. Place the printed marker beside the item, or click the two end points of a known length (ruler, card, coin) under 'One-off reference scale'. An uncalibrated SMALL/BIG estimate is shown automatically when the detected crop has real-photo size references.",
+        "Size unclear",
+        "Move a little closer or use plainer lighting, then recapture. (For exact millimetres, a printed marker or any known-length object can be used under Advanced.)",
     ),
     Status.POLICY_REQUIRED: (
         "Crop rule needed",
-        "Select a supported crop. Crops without a defensible size rule (coriander bunch, pumpkin, ash gourd) stay ungraded rather than guessed.",
+        "Pick the crop from the list; crops without a defensible size rule stay ungraded rather than guessed.",
     ),
     Status.NO_OBJECT: (
         "No clear item",
-        "Capture one complete vegetable or leaf against a plain, contrasting surface.",
+        "Capture the vegetable against a plain, contrasting surface.",
     ),
     Status.MULTIPLE_OBJECTS: ("Separate the items", "Capture one complete item at a time."),
     Status.OCCLUDED: (
         "Item partly hidden",
-        "Keep the entire item visible, away from the image edges and marker.",
+        "Keep every item fully inside the photo, not touching the edges.",
     ),
     Status.LOW_IMAGE_QUALITY: (
         "Recapture needed",
@@ -76,11 +76,11 @@ MESSAGES = {
     ),
     Status.OUT_OF_DISTRIBUTION: (
         "Cannot verify",
-        "This scene is outside the validated capture conditions.",
+        "Background too busy — use a plain surface.",
     ),
     Status.REVIEW_BORDERLINE: (
-        "Manual review needed",
-        "The measurement is too close to a size boundary for a reliable automatic label. Recapture flatter and closer, or grade manually.",
+        "Borderline size",
+        "The size is too close to a grade boundary for a reliable automatic label. Recapture closer, or grade manually.",
     ),
     Status.NOT_PRODUCE: ("Cannot verify produce", "Capture a real vegetable or leaf clearly."),
     Status.MODEL_UNAVAILABLE: (
@@ -110,11 +110,9 @@ def present_result(result, session=None):
     ):
         title = "Crop unidentified"
         message = (
-            "The vegetable could not be identified with usable confidence. Pick "
-            "the crop from the list for a full measured grade — or, for a batch "
-            "of one kind of vegetable, tick 'Batch mode': items are still "
-            "graded 1/2/3 by size relative to each other without needing the "
-            "crop name."
+            "Couldn't identify the vegetable. Pick the crop from the list — or "
+            "put several items in the photo: they'll be graded SMALL/MEDIUM/BIG "
+            "relative to each other without needing the crop name."
         )
     elif result.status != Status.ACCEPTED and result.appearance_estimate is not None:
         estimate = result.appearance_estimate
@@ -139,29 +137,34 @@ def present_result(result, session=None):
     elif result.status == Status.MULTIPLE_OBJECTS and any(
         r.startswith("BATCH_SPLIT:") for r in result.reasons
     ):
-        counts: dict[str, int] = {}
-        review = 0
-        for i in result.instances:
-            band = i.decision.band_name if i.decision else None
-            if band:
-                counts[band] = counts.get(band, 0) + 1
-            else:
-                review += 1
-        parts = [
-            f"{counts[band]} x grade {band}" for band in sorted(counts, key=int)
-        ]
-        title = "Batch grades: " + " · ".join(parts) + (f" · {review} review" if review else "")
+        small = sum(
+            1 for i in result.instances
+            if i.decision and i.decision.size_class and i.decision.size_class.value == "SMALL"
+        )
+        big = sum(
+            1 for i in result.instances
+            if i.decision and i.decision.size_class and i.decision.size_class.value == "BIG"
+        )
+        medium = sum(
+            1 for i in result.instances
+            if i.decision and i.decision.accepted and i.decision.size_class is None
+        )
+        parts = []
+        if small:
+            parts.append(f"{small} SMALL")
+        if medium:
+            parts.append(f"{medium} MEDIUM")
+        if big:
+            parts.append(f"{big} BIG")
+        total = small + medium + big
+        title = " · ".join(parts) if parts else "Batch result"
         message = (
-            f"{', '.join(parts)}"
-            + (f", {review} to review" if review else "")
-            + ". Every item gets a numeric grade (1 = smallest, 3 = biggest), "
-            "ranked relative to each other in this frame — no scale needed for "
-            "a batch split. Per-item outlines and grade numbers are drawn on "
-            "the output image. For millimetre grades (cross-batch records, "
-            "standards) use station or reference scale."
+            f"{total} item{'s' if total != 1 else ''} graded by size within this photo: "
+            f"{' · '.join(parts)}. Each item is outlined and labelled on the "
+            "output image. Sizes are relative to this batch — no scale needed."
         )
         if any(w.startswith("CROP_UNRESOLVED") for w in result.warnings):
-            message += " Crop could not be identified: grades rank size only, without a crop-specific claim."
+            message += " Crop not identified: grades are by size only."
     elif result.status == Status.ACCEPTED and (
         result.size_class is not None or result.size_band is not None
     ):
@@ -169,27 +172,21 @@ def present_result(result, session=None):
             (i.measurement for i in result.instances if i.measurement is not None), None
         )
         crop = result.policy.crop_name if result.policy else "the crop rule"
-        band_words = {"small": "1", "medium": "2", "large": "3"}
-        if result.size_band:
-            band = result.size_band.lower()
-            number = band if band.isdigit() else band_words.get(band)
-            grade = f"Grade {number} · {band.upper()}" if number else result.size_band.upper()
-        else:
-            grade = result.size_class.value.upper()
-        title = grade
+        band = (result.size_band or "").lower()
+        word = {"1": "small", "2": "medium", "3": "big", "small": "small",
+                "medium": "medium", "large": "big"}.get(band)
+        if not word and result.size_class:
+            word = result.size_class.value.lower()
+        number = {"small": 1, "medium": 2, "big": 3}.get(word)
+        title = f"{word.upper()} ({number})" if number else (word or "").upper()
         message = (
-            f"Measured {measurement.value_mm:.1f} ± {measurement.uncertainty_mm:.1f} mm "
-            f"({measurement.metric}, {crop}) against published-reference size "
-            "rules. Literature/market reference - not validated on your local "
-            "population."
+            f"{crop}: {measurement.value_mm:.0f} ± {measurement.uncertainty_mm:.0f} mm "
+            f"→ {word.upper()}. "
         )
-        if result.policy is not None and result.policy.bands_derived:
-            message += (
-                " Grade bands are derived at ±20% of the published cut-off for "
-                "numeric 1/2/3 grading (1 = small, 2 = medium, 3 = big)."
-            )
         if any(w.startswith("DISTANCE_ASSUMED") for w in result.warnings):
-            message += " Scale is distance-assumed (no reference in photo): an estimate, not a measurement."
+            message += "Scale estimated from assumed camera distance."
+        else:
+            message += "Graded against published size references."
         if session is not None:
             stability = session.observe(result)
             if not stability["stable"]:
@@ -200,7 +197,9 @@ def present_result(result, session=None):
     return image, result_html(title, message)
 
 
-def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode, batch_mode):
+def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode, batch_mode=False):
+    # batch_mode is kept for compatibility; the engine now engages batch
+    # grading automatically whenever several items are detected in frame.
     if not path:
         return None, result_html("Image needed", "Upload or paste an image first.")
     crop_key = "auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or "")
@@ -419,26 +418,21 @@ def build_app():
                             label="Image (click a known-length object to set reference points)",
                             height=320,
                         )
-                        with gr.Row():
-                            crop = gr.Dropdown(
-                                choices=CROP_UI_CHOICES,
-                                value=AUTO_CROP_CHOICE,
-                                label="Crop",
-                                filterable=True,
-                            )
+                        crop = gr.Dropdown(
+                            choices=CROP_UI_CHOICES,
+                            value=AUTO_CROP_CHOICE,
+                            label="Crop (auto-detected by default; single items and batches both work)",
+                            filterable=True,
+                        )
+                        with gr.Accordion("Advanced (optional scale setup)", open=False):
                             marker_side = gr.Number(
                                 label="Printed marker side (mm) — measured once at station setup",
                                 value=None,
                             )
-                        station_toggle = gr.Checkbox(
-                            value=True,
-                            label="Station mode (fixed camera): calibrate once with the marker visible, then items may cover it",
-                        )
-                        batch_toggle = gr.Checkbox(
-                            value=True,
-                            label="Batch mode: spread the whole batch in frame — items are split big/small relative to each other, no scale needed",
-                        )
-                        with gr.Accordion("One-off reference scale (no printed marker)", open=False):
+                            station_toggle = gr.Checkbox(
+                                value=True,
+                                label="Station mode (fixed camera): calibrate once with the marker visible, then items may cover it",
+                            )
                             ref_points_state = gr.State([])
                             ref_points_label = gr.HTML(_reference_points_html([]))
                             ref_preset = gr.Dropdown(
@@ -477,7 +471,7 @@ def build_app():
                 )
                 run.click(
                     inspect_image_ui,
-                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle, batch_toggle],
+                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle],
                     [output, status],
                     concurrency_id="inspection",
                     concurrency_limit=1,
