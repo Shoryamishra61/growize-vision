@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+import cv2
 import numpy as np
 
 from .config import (
@@ -42,6 +43,23 @@ from .segmentation_cv import segment_foreground
 from .version import __version__
 
 
+def _relative_px_value(contour_px, metric: str) -> float:
+    """Pixel-space stand-in for the crop's metric: comparable within a frame."""
+    contour = np.asarray(contour_px, dtype=np.float32).reshape(-1, 1, 2)
+    if metric == "projected_area_cm2":
+        return abs(float(cv2.contourArea(contour)))
+    _center, (w, h), _angle = cv2.minAreaRect(contour)
+    if "short" in metric:
+        return float(min(w, h))
+    if "long" in metric or "centerline" in metric:
+        return float(max(w, h))
+    hull = cv2.convexHull(contour).reshape(-1, 2)
+    if len(hull) < 2:
+        return 0.0
+    deltas = hull[:, None, :] - hull[None, :, :]
+    return float(np.sqrt(np.max(np.sum(deltas * deltas, axis=2))))
+
+
 @dataclass
 class InferenceRequest:
     """User/operator choices that affect interpretation, not the model itself."""
@@ -66,6 +84,11 @@ class InferenceRequest:
     # marker that disagrees with the stored scale triggers recalibration.
     station_mode: bool = False
     station_id: str | None = None
+    # Batch mode: grade all items of one crop in a single frame RELATIVE to
+    # each other (pixel measurements, no scale of any kind).  The split point
+    # is the batch's own size distribution at 1 - big_fraction.
+    batch_mode: bool = False
+    batch_big_fraction: float = 0.5
 
 
 @dataclass
@@ -423,8 +446,13 @@ class InferenceService:
 
             # Priority order is safety-first: no physical millimetre claim
             # without trusted calibration, then quality, then occlusion, then
-            # policy, then metrology.
-            if not calibration.valid:
+            # policy, then metrology.  Batch mode may still grade relatively.
+            batch_eligible = bool(
+                request.batch_mode
+                and policy is not None
+                and (policy.threshold_mm is not None or policy.bands)
+            )
+            if not calibration.valid and not batch_eligible:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.CALIBRATION_REQUIRED,
@@ -531,6 +559,14 @@ class InferenceService:
                     "threshold exists for this crop. Physical measurement is "
                     "withheld in strict mode."
                 ]
+            elif not calibration.valid:
+                # Batch mode, quality gates passed: measured later relative to
+                # the whole frame once every instance has been evaluated.
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.REVIEW_BORDERLINE,
+                    reasons=["BATCH_RELATIVE_PENDING"],
+                )
             else:
                 try:
                     measurement, contour_mm = measure_contour(
@@ -565,7 +601,78 @@ class InferenceService:
             if instance.decision and instance.decision.measurement:
                 instance.measurement = instance.decision.measurement
             instances.append(instance)
+
+        if request.batch_mode:
+            self._apply_batch_split(instances, policy, request)
         return instances
+
+    def _apply_batch_split(
+        self,
+        instances: list[InstanceObservation],
+        policy: Any,
+        request: InferenceRequest,
+    ) -> None:
+        """Grade items relative to the frame's own size distribution.
+
+        No scale of any kind is required: within one camera view, pixel
+        measurements are directly comparable, so the split point is a
+        quantile of the batch itself.  This is uncalibrated by design and
+        every decision says so; it is a batch sorter, not a measuring tool.
+        """
+        pending = [
+            i for i in instances
+            if i.decision is not None and i.decision.reasons == ["BATCH_RELATIVE_PENDING"]
+        ]
+        if not pending:
+            return
+        if len(pending) < 2 or policy is None:
+            for instance in pending:
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.CALIBRATION_REQUIRED,
+                    reasons=[
+                        "BATCH_SPLIT_NEEDS_MORE_ITEMS: batch mode splits items "
+                        "relative to each other; present at least two items of "
+                        "the crop in frame, or commission the station for "
+                        "measured grading."
+                    ],
+                    policy=policy,
+                    policy_version=getattr(policy, "policy_version", None),
+                )
+            return
+        measured = sorted(
+            (
+                (instance, _relative_px_value(instance.contour_px, policy.metric))
+                for instance in pending
+            ),
+            key=lambda pair: pair[1],
+        )
+        values = [value for _, value in measured]
+        big_fraction = min(max(float(request.batch_big_fraction), 0.05), 0.95)
+        cut = float(np.quantile(values, 1.0 - big_fraction))
+        margin = 0.05
+        total = len(measured)
+        for rank, (instance, value) in enumerate(measured, start=1):
+            if value >= cut * (1.0 + margin):
+                size_class, status = SizeClass.BIG, Status.ACCEPTED
+            elif value <= cut * (1.0 - margin):
+                size_class, status = SizeClass.SMALL, Status.ACCEPTED
+            else:
+                size_class, status = None, Status.REVIEW_BORDERLINE
+            instance.decision = GradeDecision(
+                size_class=size_class,
+                status=status,
+                reasons=[
+                    f"BATCH_RELATIVE: item {rank}/{total} measures {value:.0f} px "
+                    f"against the batch split of {cut:.0f} px (top "
+                    f"{int(round(big_fraction * 100))}% graded BIG).",
+                    "BATCH_RELATIVE_UNCALIBRATED: sizes are comparable within "
+                    "this frame only; not millimetres, not comparable across "
+                    "batches or camera positions.",
+                ],
+                policy=policy,
+                policy_version=policy.policy_version,
+            )
 
     def _summarise(
         self,
@@ -582,17 +689,21 @@ class InferenceService:
             if not calibration.valid:
                 reasons.append("Calibration marker was also unavailable or invalid.")
             return Status.NO_OBJECT, None, reasons
-        if not calibration.valid:
-            return (
-                Status.CALIBRATION_REQUIRED,
-                None,
-                [
-                    "Physical scale is missing: place the printed marker beside the "
-                    "item, or mark the two end points of any object of known "
-                    "length and provide that length.",
-                    *calibration.reasons,
-                ],
-            )
+        batch_graded_any = any(
+            i.decision is not None
+            and any(r.startswith("BATCH_RELATIVE") for r in i.decision.reasons)
+            for i in instances
+        )
+        if not calibration.valid and not batch_graded_any:
+            reasons = [
+                "Physical scale is missing: place the printed marker beside the "
+                "item, or mark the two end points of any object of known "
+                "length and provide that length.",
+                *calibration.reasons,
+            ]
+            if len(instances) == 1 and instances[0].decision is not None:
+                reasons.extend(instances[0].decision.reasons)
+            return Status.CALIBRATION_REQUIRED, None, reasons
         if segmentation.background_busy:
             return (
                 Status.OUT_OF_DISTRIBUTION,
@@ -618,6 +729,23 @@ class InferenceService:
                 ],
             )
         if len(instances) > 1:
+            batch_graded = [
+                i for i in instances
+                if i.decision is not None
+                and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
+            ]
+            if batch_graded:
+                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
+                small = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.SMALL)
+                review = len(batch_graded) - big - small
+                return (
+                    Status.MULTIPLE_OBJECTS,
+                    None,
+                    [
+                        f"BATCH_SPLIT: {big} BIG, {small} SMALL, {review} REVIEW "
+                        "(relative to this frame's items; no millimetres)."
+                    ],
+                )
             statuses = [i.decision.status if i.decision else Status.REVIEW_BORDERLINE for i in instances]
             if any(s == Status.OCCLUDED for s in statuses):
                 return (

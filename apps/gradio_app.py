@@ -125,6 +125,20 @@ def present_result(result, session=None):
             "Use the printed marker, a clicked known-length reference, or pick a crop "
             "with published references."
         )
+    elif result.status == Status.MULTIPLE_OBJECTS and any(
+        r.startswith("BATCH_SPLIT:") for r in result.reasons
+    ):
+        big = sum(1 for i in result.instances if i.decision and i.decision.size_class is not None and i.decision.size_class.value == "BIG")
+        small = sum(1 for i in result.instances if i.decision and i.decision.size_class is not None and i.decision.size_class.value == "SMALL")
+        review = len(result.instances) - big - small
+        title = f"Batch split: {big} BIG · {small} SMALL"
+        message = (
+            f"{big} big, {small} small, {review} to review. Items were split "
+            "relative to each other in this frame — no scale needed for a batch "
+            "split. Per-item outlines are drawn on the output image. For "
+            "millimetre grades (cross-batch records, standards) use station or "
+            "reference scale."
+        )
     elif result.status == Status.ACCEPTED and (
         result.size_class is not None or result.size_band is not None
     ):
@@ -150,7 +164,7 @@ def present_result(result, session=None):
     return image, result_html(title, message)
 
 
-def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode):
+def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode, batch_mode, big_fraction):
     if not path:
         return None, result_html("Image needed", "Upload or paste an image first.")
     crop_key = "auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or "")
@@ -180,6 +194,8 @@ def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm,
         reference_uncertainty_mm=uncertainty,
         station_mode=bool(station_mode),
         station_id=STATION_ID if station_mode else None,
+        batch_mode=bool(batch_mode),
+        batch_big_fraction=float(big_fraction) if big_fraction else 0.5,
         # No scale in the photo? Fall back to the uncalibrated appearance
         # estimate vs real-photo species size priors, clearly labelled.
         allow_appearance_estimate=True,
@@ -377,6 +393,14 @@ def build_app():
                             value=True,
                             label="Station mode (fixed camera): calibrate once with the marker visible, then items may cover it",
                         )
+                        batch_toggle = gr.Checkbox(
+                            value=True,
+                            label="Batch mode: spread the whole batch in frame — items are split big/small relative to each other, no scale needed",
+                        )
+                        big_fraction = gr.Slider(
+                            minimum=0.1, maximum=0.9, value=0.5, step=0.05,
+                            label="Batch 'BIG' share (top X% of items by size)",
+                        )
                         with gr.Accordion("One-off reference scale (no printed marker)", open=False):
                             ref_points_state = gr.State([])
                             ref_points_label = gr.HTML(_reference_points_html([]))
@@ -416,7 +440,7 @@ def build_app():
                 )
                 run.click(
                     inspect_image_ui,
-                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle],
+                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle, batch_toggle, big_fraction],
                     [output, status],
                     concurrency_id="inspection",
                     concurrency_limit=1,
