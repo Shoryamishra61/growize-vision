@@ -43,6 +43,52 @@ from .segmentation_cv import segment_foreground
 from .version import __version__
 
 
+def _assign_nearest_band(
+    decision: GradeDecision, policy: Any, calibration_id: str | None
+) -> GradeDecision:
+    """Batch-mode borderline handling: assign the band containing the point.
+
+    Absolute grading keeps the interval-in-band discipline for single items,
+    but a sorter must label every item.  When the uncertainty interval
+    crosses a band edge, the item is assigned to the band its point estimate
+    falls in, with an explicit ASSIGNED_NEAREST_BAND reason.
+    """
+    measurement = decision.measurement
+    bands = policy.bands or ()
+    if measurement is None or not bands:
+        return decision
+    value = float(measurement.value_mm)
+    index = 0
+    for i, band in enumerate(bands):
+        if value >= band.min_mm:
+            index = i
+    band = bands[index]
+    size_class = (
+        SizeClass.SMALL if index == 0
+        else SizeClass.BIG if index == len(bands) - 1
+        else None
+    )
+    return GradeDecision(
+        size_class=size_class,
+        status=Status.ACCEPTED,
+        band_name=band.name,
+        reasons=[
+            "ASSIGNED_NEAREST_BAND: measurement interval "
+            f"{measurement.lower_mm:.1f}-{measurement.upper_mm:.1f} mm crosses a "
+            f"grade edge; batch sorting assigned the nearest grade (point value "
+            f"{value:.1f} mm). Verify with a marker or station for exact mm.",
+            *decision.reasons,
+        ],
+        policy=policy,
+        measurement=measurement,
+        threshold_mm=policy.threshold_mm,
+        comparator=policy.comparator,
+        policy_version=policy.policy_version,
+        calibration_id=calibration_id,
+        warning=decision.warning,
+    )
+
+
 def _relative_px_value(contour_px, metric: str) -> float:
     """Pixel-space stand-in for the crop's metric: comparable within a frame."""
     contour = np.asarray(contour_px, dtype=np.float32).reshape(-1, 1, 2)
@@ -332,18 +378,33 @@ class InferenceService:
             # so grade them relative to each other without asking the operator
             # to tick anything.  A real marker/station calibration still wins.
             request = replace(request, batch_mode=True)
+        if request.batch_mode and segmentation.background_busy:
+            # A busy background downgrades confidence but must not block a
+            # batch sort: produce often sits near the frame border where the
+            # plain-mat check samples.  Single-item metrology stays strict.
+            warnings.append(
+                "BACKGROUND_BUSY: background is not a plain matte station; "
+                "grades still emitted for the batch, but verify lighting for "
+                "reliable sizes."
+            )
         if (
             not calibration.valid
             and request.allow_scale_estimate
-            and not request.batch_mode
-            and len(segmentation.objects) == 1
-            and not self._crop_has_appearance_priors(request.crop_key)
+            and (
+                request.batch_mode
+                or (
+                    len(segmentation.objects) == 1
+                    and not self._crop_has_appearance_priors(request.crop_key)
+                )
+            )
         ):
-            # Last-resort tier for single vegetables with no reference at all:
-            # a distance-assumed estimated scale.  Wide uncertainty keeps
-            # borderline items in review instead of guessing a grade.  Batches
-            # never use it: ranking items within one frame is sharper than a
-            # ±30% distance guess shared by every item.
+            # Absolute grading anchor: a distance-assumed scale lets every item
+            # be compared against the crop's published size bands (the
+            # "average big/small size"), instead of a relative split that
+            # forces one small/medium/big even when all items are big (or all
+            # small).  For single items, appearance priors are preferred when
+            # they exist; batches always use the estimated scale because the
+            # per-image appearance estimator handles one object only.
             calibration = calibrate_from_camera_prior(
                 processing_bgr.shape, self.settings.calibration
             )
@@ -517,7 +578,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif segmentation.background_busy:
+            elif segmentation.background_busy and not request.batch_mode:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.OUT_OF_DISTRIBUTION,
@@ -529,11 +590,24 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif not quality.passed:
+            elif not quality.passed and not (
+                request.batch_mode
+                and not [
+                    flag for flag in quality.flags
+                    if not flag.startswith("BUSY_BACKGROUND")
+                ]
+            ):
+                # Background-only failure is tolerated in batch mode (the
+                # busy-mat check trips easily when produce sits near the frame
+                # border); blur/glare/contrast still block.
+                blocking = [
+                    flag for flag in quality.flags
+                    if not flag.startswith("BUSY_BACKGROUND")
+                ]
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.LOW_IMAGE_QUALITY,
-                    reasons=list(quality.flags)
+                    reasons=blocking or list(quality.flags)
                     or ["Image-quality gate failed."],
                     policy=policy,
                     policy_version=getattr(policy, "policy_version", None),
@@ -657,6 +731,14 @@ class InferenceService:
                     ):
                         instance.quality_flags.append(
                             "HIGH_CURVATURE: straight-axis metric may be biased for bent pods/leaves."
+                        )
+                    if (
+                        request.batch_mode
+                        and instance.decision.status is Status.REVIEW_BORDERLINE
+                        and policy.bands
+                    ):
+                        instance.decision = _assign_nearest_band(
+                            instance.decision, policy, calibration.calibration_id
                         )
 
             if instance.decision and instance.decision.measurement:
@@ -800,15 +882,11 @@ class InferenceService:
                 reasons.extend(instances[0].decision.reasons)
             return Status.CALIBRATION_REQUIRED, None, reasons
         if len(instances) > 1:
-            batch_graded = [
-                i for i in instances
-                if i.decision is not None
-                and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
-            ]
-            if batch_graded:
-                small = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.SMALL)
-                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
-                medium = len(batch_graded) - small - big
+            accepted = [i for i in instances if i.decision is not None and i.decision.accepted]
+            if accepted:
+                small = sum(1 for i in accepted if i.decision.size_class is SizeClass.SMALL)
+                big = sum(1 for i in accepted if i.decision.size_class is SizeClass.BIG)
+                medium = len(accepted) - small - big
                 parts = []
                 if small:
                     parts.append(f"{small} SMALL")
@@ -816,13 +894,22 @@ class InferenceService:
                     parts.append(f"{medium} MEDIUM")
                 if big:
                     parts.append(f"{big} BIG")
+                ungraded = len(instances) - len(accepted)
+                note = f", {ungraded} ungraded" if ungraded else ""
+                relative = any(
+                    r.startswith("BATCH_RELATIVE:") for i in accepted for r in i.decision.reasons
+                )
+                basis = (
+                    "relative to this frame's items (no scale, not millimetres)"
+                    if relative
+                    else "against published size references (estimated scale unless a marker/station was used)"
+                )
                 return (
                     Status.MULTIPLE_OBJECTS,
                     None,
                     [
-                        f"BATCH_SPLIT: {' · '.join(parts)} — every item ranked "
-                        "by size within this frame (1 = smallest, 3 = biggest; "
-                        "relative sizes, not millimetres)."
+                        f"BATCH_SPLIT: {' · '.join(parts)}{note} — graded {basis}. "
+                        "Each item is outlined and labelled on the output image."
                     ],
                 )
             statuses = [i.decision.status if i.decision else Status.REVIEW_BORDERLINE for i in instances]

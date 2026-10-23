@@ -159,10 +159,16 @@ def present_result(result, session=None):
         total = small + medium + big
         title = " · ".join(parts) if parts else "Batch result"
         message = (
-            f"{total} item{'s' if total != 1 else ''} graded by size within this photo: "
-            f"{' · '.join(parts)}. Each item is outlined and labelled on the "
-            "output image. Sizes are relative to this batch — no scale needed."
+            f"{total} item{'s' if total != 1 else ''} graded: {' · '.join(parts)}. "
+            "Each item is outlined and labelled on the output image."
         )
+        if any(
+            i.decision and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
+            for i in result.instances
+        ):
+            message += " Sizes are relative to this batch — no scale in the photo."
+        else:
+            message += " Graded against published size references using estimated scale."
         if any(w.startswith("CROP_UNRESOLVED") for w in result.warnings):
             message += " Crop not identified: grades are by size only."
     elif result.status == Status.ACCEPTED and (

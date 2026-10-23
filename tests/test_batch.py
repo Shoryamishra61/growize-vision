@@ -70,6 +70,60 @@ def test_batch_binary_split_still_available() -> None:
     assert "NEAR_BATCH_CUT" in reasons  # the median item sits on the cut
 
 
+def test_two_big_potatoes_both_grade_big_with_absolute_bands() -> None:
+    """Absolute grading: items are compared against the crop's published size
+    bands, so two genuinely big potatoes are both BIG — a relative split that
+    forces one SMALL and one BIG on identical items is wrong."""
+    import cv2
+
+    rng = np.random.default_rng(21)
+    scene = np.full((560, 800, 3), 190, np.uint8)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    # Two wide tubers (~150 px short axis) and no marker.
+    cv2.ellipse(scene, (230, 280), (150, 96), 6, 0, 360, (95, 130, 70), -1)
+    cv2.ellipse(scene, (580, 290), (146, 92), -5, 0, 360, (110, 115, 60), -1)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    service = InferenceService()
+    result = service.inspect_frame(
+        scene,
+        request=InferenceRequest(crop_key="potato", allow_scale_estimate=True),
+    )
+    assert any(r.startswith("BATCH_SPLIT:") for r in result.reasons)
+    graded = [
+        i for i in result.instances
+        if i.decision and i.decision.size_class is not None
+    ]
+    words = {i.decision.size_class.value for i in graded}
+    assert words == {"BIG"}  # both big against the 40/60 mm bands, no forced small
+    # Millimetre measurements back the verdicts.
+    assert all(i.measurement is not None for i in graded)
+    assert all(i.measurement.value_mm > 60.0 for i in graded)
+
+
+def test_batch_grades_despite_busy_background_check() -> None:
+    """Produce near the frame border trips the plain-mat heuristic; a batch
+    sort must continue with a warning instead of refusing everything."""
+    import cv2
+
+    rng = np.random.default_rng(11)
+    scene = np.full((560, 800, 3), 200, np.uint8)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    cv2.ellipse(scene, (250, 280), (105, 64), 8, 0, 360, (95, 130, 70), -1)
+    cv2.ellipse(scene, (560, 290), (100, 62), -6, 0, 360, (110, 115, 60), -1)
+    cv2.ellipse(scene, (390, 460), (98, 58), 3, 0, 360, (85, 135, 75), -1)
+    cv2.ellipse(scene, (120, 480), (42, 28), 0, 0, 360, (90, 125, 72), -1)
+    scene = np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
+    service = InferenceService()
+    result = service.inspect_frame(
+        scene, request=InferenceRequest(crop_key="potato", allow_scale_estimate=True))
+    graded = [
+        i for i in result.instances
+        if i.decision and i.decision.size_class is not None
+    ]
+    assert graded, "batch must grade items even when the background check complains"
+    assert all(i.measurement is not None for i in graded)
+
+
 def test_uniform_batch_labels_every_item_the_same() -> None:
     """Three nearly identical potatoes: big/small is meaningless, all get 2."""
     import cv2
