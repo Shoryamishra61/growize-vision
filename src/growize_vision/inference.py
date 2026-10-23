@@ -37,6 +37,7 @@ from .markers import (
 from .media import MediaError, image_sha256, resize_for_processing, validate_bgr_frame
 from .quality import assess_quality
 from .rendering import render_inspection
+from .scale import calibrate_from_two_point_reference
 from .segmentation_cv import segment_foreground
 from .version import __version__
 
@@ -54,6 +55,11 @@ class InferenceRequest:
     notes: str | None = None
     allow_appearance_estimate: bool = False
     cross_check_species: bool | None = None  # default: on for still-image sources
+    # No printed marker? Mark the two end points (original-image pixel
+    # coordinates) of any object of known length and state that length.
+    reference_points_px: tuple[float, float, float, float] | None = None
+    reference_length_mm: float | None = None
+    reference_uncertainty_mm: float = 2.0
 
 
 @dataclass
@@ -153,22 +159,47 @@ class InferenceService:
             self.settings.calibration,
             expected_id=request.expected_marker_id,
         )
-        calibration = (
-            calibrate_from_marker(
+        reference_calibration = None
+        if marker is None and request.reference_points_px and request.reference_length_mm:
+            # Points are clicked on the original upload; map them into the
+            # processed frame's coordinate system before calibrating.
+            ax, ay, bx, by = request.reference_points_px
+            reference_calibration = calibrate_from_two_point_reference(
+                processing_bgr.shape,
+                (ax * resize_scale, ay * resize_scale),
+                (bx * resize_scale, by * resize_scale),
+                request.reference_length_mm,
+                self.settings.calibration,
+                reference_uncertainty_mm=request.reference_uncertainty_mm,
+            )
+            if reference_calibration.valid:
+                warnings.extend(reference_calibration.warnings)
+            else:
+                warnings.extend(reference_calibration.reasons)
+        if marker is not None:
+            calibration = calibrate_from_marker(
                 processing_bgr.shape,
                 marker,
                 request.marker_side_mm,
                 self.settings.calibration,
                 request.marker_measurement_uncertainty_mm,
             )
-            if marker is not None
-            else Calibration(
+        elif reference_calibration is not None and reference_calibration.valid:
+            calibration = reference_calibration
+        else:
+            reasons = list(marker_reasons) or [
+                "No usable calibration marker was found in this frame."
+            ]
+            if not (request.reference_points_px and request.reference_length_mm):
+                reasons.append(
+                    "Alternatively, mark the two end points of any object of "
+                    "known length (ruler, card, coin) and provide that length."
+                )
+            calibration = Calibration(
                 valid=False,
                 calibration_id="unavailable",
-                reasons=marker_reasons
-                or ["No usable calibration marker was found in this frame."],
+                reasons=reasons,
             )
-        )
         timings["calibration_ms"] = (time.perf_counter() - marker_start) * 1000.0
         warnings.extend(calibration.warnings)
         if not calibration.valid:
@@ -528,7 +559,12 @@ class InferenceService:
             return (
                 Status.CALIBRATION_REQUIRED,
                 None,
-                ["A valid marker with the user-measured outer side length is required."],
+                [
+                    "Physical scale is missing: place the printed marker beside the "
+                    "item, or mark the two end points of any object of known "
+                    "length and provide that length.",
+                    *calibration.reasons,
+                ],
             )
         if segmentation.background_busy:
             return (

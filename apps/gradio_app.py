@@ -23,18 +23,40 @@ from growize_vision.video import VideoError, process_video
 LOGGER = logging.getLogger(__name__)
 SERVICE = InferenceService()
 OUTPUT_DIR = ROOT / "outputs"
-# A species model trained with generated views is not eligible under the new
-# real-original-only requirement. Do not load it or infer physical size from it.
-REQUEST = InferenceRequest(crop_key=None, demo_policy=False, allow_appearance_estimate=False)
+
+# The deployed app grades against PUBLISHED_REFERENCE crop policies (sourced
+# from standards, trade practice, and research data - docs/SIZE_REFERENCE_SOURCES.md).
+# Every accepted decision carries that disclaimer; nothing is presented as an
+# ARL/AGMARK approval.
+CROP_CHOICES = {
+    policy.crop_name: policy.crop_key
+    for policy in (SERVICE.policies.policy(key) for key in SERVICE.policies.crop_keys)
+    if policy.threshold_mm is not None
+}
+REFERENCE_PRESETS = {
+    "Custom length (type below)": None,
+    "Ruler marked 100 mm": 100.0,
+    "A4 paper — short edge (210 mm)": 210.0,
+    "A4 paper — long edge (297 mm)": 297.0,
+    "Credit/ID card — long edge (85.6 mm)": 85.6,
+    "₹2 coin — diameter (25 mm)": 25.0,
+    "₹5 coin — diameter (23 mm)": 23.0,
+}
+REFERENCE_UNCERTAINTY = {
+    "Ruler (±1 mm)": 1.0,
+    "Card edge (±2 mm)": 2.0,
+    "Coin (±1.5 mm)": 1.5,
+    "Rough estimate (±5 mm)": 5.0,
+}
 
 MESSAGES = {
     Status.CALIBRATION_REQUIRED: (
         "Scale needed",
-        "Place a measured reference marker beside the item on the same flat surface. Its physical size must be configured before measurement.",
+        "Physical size cannot be measured without scale. Either place the printed marker beside the item, or click the two end points of any object of known length (ruler, card, coin edge) in the image and enter that length under 'Reference scale'.",
     ),
     Status.POLICY_REQUIRED: (
-        "Reference average needed",
-        "No measured reference average is available for this kind of item. A size label would be a guess.",
+        "Crop rule needed",
+        "Select a supported crop. Crops without a defensible size rule (coriander bunch, pumpkin, ash gourd) stay ungraded rather than guessed.",
     ),
     Status.NO_OBJECT: (
         "No clear item",
@@ -55,7 +77,7 @@ MESSAGES = {
     ),
     Status.REVIEW_BORDERLINE: (
         "Manual review needed",
-        "The measurement is too close to the size boundary for a reliable automatic label.",
+        "The measurement is too close to a size boundary for a reliable automatic label. Recapture flatter and closer, or grade manually.",
     ),
     Status.NOT_PRODUCE: ("Cannot verify produce", "Capture a real vegetable or leaf clearly."),
     Status.MODEL_UNAVAILABLE: (
@@ -71,8 +93,8 @@ def result_html(title: str, message: str) -> str:
 
 
 READY = result_html(
-    "Validation incomplete",
-    "SMALL/BIG grading is not released. Add an image to inspect capture conditions; no verified size model is available yet.",
+    "Ready",
+    "Upload one item on a plain surface, choose the crop, and either use the printed marker or click a known-length reference (ruler, card, coin) to set scale.",
 )
 
 
@@ -80,9 +102,21 @@ def present_result(result, session=None):
     title, message = MESSAGES.get(
         result.status, ("Cannot verify", "No verified size result is available.")
     )
-    if result.status == Status.ACCEPTED and result.size_class is not None:
-        title = result.size_class.value
-        message = "Measured against the configured size rule."
+    if result.status == Status.ACCEPTED and (
+        result.size_class is not None or result.size_band is not None
+    ):
+        measurement = next(
+            (i.measurement for i in result.instances if i.measurement is not None), None
+        )
+        crop = result.policy.crop_name if result.policy else "the crop rule"
+        grade = (result.size_band or result.size_class.value).upper()
+        title = grade
+        message = (
+            f"Measured {measurement.value_mm:.1f} ± {measurement.uncertainty_mm:.1f} mm "
+            f"({measurement.metric}, {crop}) against published-reference size "
+            "rules. Literature/market reference - not validated on your local "
+            "population."
+        )
         if session is not None:
             stability = session.observe(result)
             if not stability["stable"]:
@@ -93,9 +127,35 @@ def present_result(result, session=None):
     return image, result_html(title, message)
 
 
-def inspect_image_ui(path):
+def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty):
     if not path:
         return None, result_html("Image needed", "Upload or paste an image first.")
+    crop_key = CROP_CHOICES.get(crop_name or "")
+    if crop_key is None:
+        return None, result_html(
+            "Crop needed", "Choose which vegetable is in the image; grades are crop-specific."
+        )
+    try:
+        side = float(marker_side_mm) if marker_side_mm else None
+    except (TypeError, ValueError):
+        side = None
+    reference = None
+    try:
+        length = float(ref_length_mm) if ref_length_mm else None
+    except (TypeError, ValueError):
+        length = None
+    if ref_points and len(ref_points) == 2 and length and length > 0:
+        (ax, ay), (bx, by) = ref_points[0], ref_points[1]
+        reference = (float(ax), float(ay), float(bx), float(by))
+    uncertainty = REFERENCE_UNCERTAINTY.get(ref_uncertainty, 2.0)
+    request = InferenceRequest(
+        crop_key=crop_key,
+        marker_side_mm=side,
+        demo_policy=False,
+        reference_points_px=reference,
+        reference_length_mm=length if reference else None,
+        reference_uncertainty_mm=uncertainty,
+    )
     try:
         decoded = load_image_file(
             path,
@@ -105,7 +165,7 @@ def inspect_image_ui(path):
         context = MediaContext(
             source_type=SourceType.IMAGE, source_id=Path(path).name, source_sha256=decoded.sha256
         )
-        return present_result(SERVICE.inspect_frame(decoded.bgr, context, REQUEST))
+        return present_result(SERVICE.inspect_frame(decoded.bgr, context, request))
     except (MediaError, OSError) as exc:
         return None, result_html("Cannot read image", str(exc))
     except Exception:
@@ -113,7 +173,36 @@ def inspect_image_ui(path):
         return None, result_html("Inspection failed", "No size was assigned. Try another capture.")
 
 
-def live_inspect_ui(frame, session):
+def capture_reference_point(evt: gr.SelectData, points):
+    current = list(points or [])
+    click = (float(evt.index[0]), float(evt.index[1]))
+    current = current[-1:] if len(current) >= 2 else current
+    current.append(click)
+    label = _reference_points_html(current)
+    return current, label
+
+
+def clear_reference_points():
+    return [], _reference_points_html([])
+
+
+def _reference_points_html(points):
+    if len(points) < 2:
+        return (
+            "<div class='result'><h2>Reference: point "
+            f"{len(points) + 1} of 2</h2><p>Click one end of the known-length "
+            "object in the image.</p></div>"
+        )
+    (ax, ay), (bx, by) = points[0], points[1]
+    span = ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5
+    return (
+        "<div class='result'><h2>Reference set</h2><p>"
+        f"Points ({ax:.0f}, {ay:.0f}) → ({bx:.0f}, {by:.0f}), span {span:.0f} px. "
+        "Enter the true length of that span and press Check size.</p></div>"
+    )
+
+
+def live_inspect_ui(frame, session, crop_name):
     session = session or LiveSession()
     if frame is None:
         session.invalidate_current_frame()
@@ -122,9 +211,10 @@ def live_inspect_ui(frame, session):
             result_html("Camera idle", "Start the camera and allow browser access."),
             session,
         )
+    request = InferenceRequest(crop_key=CROP_CHOICES.get(crop_name or ""))
     try:
         result = SERVICE.inspect_frame(
-            rgb_to_bgr(frame), MediaContext(source_type=SourceType.WEBCAM), REQUEST
+            rgb_to_bgr(frame), MediaContext(source_type=SourceType.WEBCAM), request
         )
         image, text = present_result(result, session)
         return image, text, session
@@ -138,14 +228,14 @@ def live_inspect_ui(frame, session):
         )
 
 
-def process_video_ui(path, progress=gr.Progress()):
+def process_video_ui(path, crop_name, progress=gr.Progress()):
     if not path:
         return None, result_html("Video needed", "Upload or record a video first.")
     try:
         report = process_video(
             path,
             service=SERVICE,
-            request=REQUEST,
+            request=InferenceRequest(crop_key=CROP_CHOICES.get(crop_name or "")),
             settings=SERVICE.settings,
             output_dir=OUTPUT_DIR,
             progress=lambda fraction, description: progress(fraction, desc=description),
@@ -225,6 +315,7 @@ def build_app():
         title="Growize · Size inspection", theme=theme, css=CSS, js=ACCESSIBILITY_JS
     ) as app:
         gr.Markdown("# Vegetable size inspection", elem_id="station-title")
+        crop_choices = list(CROP_CHOICES.keys())
         with gr.Tabs():
             with gr.Tab("Image"):
                 with gr.Row():
@@ -232,26 +323,80 @@ def build_app():
                         source = gr.Image(
                             type="filepath",
                             sources=["upload", "clipboard"],
-                            label="Image",
+                            label="Image (click a known-length object to set reference points)",
                             height=320,
                         )
+                        with gr.Row():
+                            crop = gr.Dropdown(
+                                choices=crop_choices,
+                                value=crop_choices[0] if crop_choices else None,
+                                label="Crop",
+                                filterable=True,
+                            )
+                            marker_side = gr.Number(
+                                label="Printed marker side (mm) — optional",
+                                value=None,
+                                minimum=5,
+                                maximum=1000,
+                            )
+                        with gr.Accordion("Reference scale (no printed marker)", open=True):
+                            ref_points_state = gr.State([])
+                            ref_points_label = gr.HTML(_reference_points_html([]))
+                            ref_preset = gr.Dropdown(
+                                choices=list(REFERENCE_PRESETS.keys()),
+                                value=list(REFERENCE_PRESETS.keys())[0],
+                                label="Known length of the clicked span",
+                            )
+                            ref_length = gr.Number(
+                                label="True length (mm)", value=None, minimum=5, maximum=1000
+                            )
+                            ref_uncertainty = gr.Dropdown(
+                                choices=list(REFERENCE_UNCERTAINTY.keys()),
+                                value=list(REFERENCE_UNCERTAINTY.keys())[0],
+                                label="How accurate is that length?",
+                            )
+                            ref_clear = gr.Button("Clear reference points")
                         run = gr.Button("Check size", variant="primary")
                         clear = gr.Button("Clear")
                     with gr.Column():
                         output = gr.Image(label="Output", interactive=False, height=320)
                         status = gr.HTML(READY)
+                source.select(
+                    capture_reference_point,
+                    [ref_points_state],
+                    [ref_points_state, ref_points_label],
+                    queue=False,
+                )
+                ref_clear.click(
+                    clear_reference_points,
+                    outputs=[ref_points_state, ref_points_label],
+                    queue=False,
+                )
+                ref_preset.change(
+                    lambda preset: REFERENCE_PRESETS.get(preset),
+                    inputs=[ref_preset],
+                    outputs=[ref_length],
+                    queue=False,
+                )
                 run.click(
                     inspect_image_ui,
-                    source,
+                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty],
                     [output, status],
                     concurrency_id="inspection",
                     concurrency_limit=1,
                 )
                 clear.click(
-                    lambda: (None, None, READY), outputs=[source, output, status], queue=False
+                    lambda: (None, None, READY, [], _reference_points_html([])),
+                    outputs=[source, output, status, ref_points_state, ref_points_label],
+                    queue=False,
                 )
             with gr.Tab("Camera"):
                 session = gr.State(LiveSession())
+                camera_crop = gr.Dropdown(
+                    choices=crop_choices,
+                    value=crop_choices[0] if crop_choices else None,
+                    label="Crop (marker-based grading)",
+                )
                 with gr.Row():
                     camera = gr.Image(
                         sources=["webcam"],
@@ -267,7 +412,7 @@ def build_app():
                         )
                 camera.stream(
                     live_inspect_ui,
-                    [camera, session],
+                    [camera, session, camera_crop],
                     [camera_output, camera_status, session],
                     concurrency_id="inspection",
                     concurrency_limit=1,
@@ -284,6 +429,11 @@ def build_app():
                     concurrency_limit=1,
                 )
             with gr.Tab("Video"):
+                video_crop = gr.Dropdown(
+                    choices=crop_choices,
+                    value=crop_choices[0] if crop_choices else None,
+                    label="Crop (marker-based grading)",
+                )
                 with gr.Row():
                     with gr.Column():
                         video = gr.Video(sources=["upload", "webcam"], label="Video", height=320)
@@ -295,7 +445,7 @@ def build_app():
                         )
                 video_run.click(
                     process_video_ui,
-                    video,
+                    [video, video_crop],
                     [replay, video_status],
                     concurrency_id="inspection",
                     concurrency_limit=1,

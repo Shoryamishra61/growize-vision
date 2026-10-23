@@ -52,11 +52,11 @@ def test_empty_ui_input_clears_output(monkeypatch):
     from apps.gradio_app import inspect_image_ui, live_inspect_ui, process_video_ui
     from growize_vision.tracking import LiveSession
 
-    image, message = inspect_image_ui(None)
+    image, message = inspect_image_ui(None, "Potato", None, [], None, "Ruler (±1 mm)")
     assert image is None and "Image needed" in message
-    image, message, session = live_inspect_ui(None, LiveSession())
+    image, message, session = live_inspect_ui(None, LiveSession(), "Potato")
     assert image is None and session.last_annotated_rgb is None
-    video, message = process_video_ui(None)
+    video, message = process_video_ui(None, "Potato")
     assert video is None and "Video needed" in message
 
 
