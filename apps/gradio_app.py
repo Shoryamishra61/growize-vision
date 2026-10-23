@@ -154,6 +154,8 @@ def present_result(result, session=None):
             "rules. Literature/market reference - not validated on your local "
             "population."
         )
+        if any(w.startswith("DISTANCE_ASSUMED") for w in result.warnings):
+            message += " Scale is distance-assumed (no reference in photo): an estimate, not a measurement."
         if session is not None:
             stability = session.observe(result)
             if not stability["stable"]:
@@ -164,7 +166,7 @@ def present_result(result, session=None):
     return image, result_html(title, message)
 
 
-def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode, batch_mode, big_fraction):
+def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode, batch_mode):
     if not path:
         return None, result_html("Image needed", "Upload or paste an image first.")
     crop_key = "auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or "")
@@ -195,10 +197,11 @@ def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm,
         station_mode=bool(station_mode),
         station_id=STATION_ID if station_mode else None,
         batch_mode=bool(batch_mode),
-        batch_big_fraction=float(big_fraction) if big_fraction else 0.5,
-        # No scale in the photo? Fall back to the uncalibrated appearance
-        # estimate vs real-photo species size priors, clearly labelled.
+        # No scale of any kind? Fall back to appearance priors (12 crops) and
+        # then to a distance-assumed estimated scale so a single vegetable
+        # always gets a verdict or an explicit review - never a demand for scale.
         allow_appearance_estimate=True,
+        allow_scale_estimate=True,
     )
     try:
         decoded = load_image_file(
@@ -259,6 +262,8 @@ def live_inspect_ui(frame, session, crop_name, station_mode):
         crop_key="auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or ""),
         station_mode=bool(station_mode),
         station_id="camera-station" if station_mode else None,
+        allow_appearance_estimate=True,
+        allow_scale_estimate=True,
     )
     try:
         result = SERVICE.inspect_frame(
@@ -287,6 +292,8 @@ def process_video_ui(path, crop_name, station_mode, progress=gr.Progress()):
                 crop_key="auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or ""),
                 station_mode=bool(station_mode),
                 station_id="video-station" if station_mode else None,
+                allow_appearance_estimate=True,
+                allow_scale_estimate=True,
             ),
             settings=SERVICE.settings,
             output_dir=OUTPUT_DIR,
@@ -397,10 +404,6 @@ def build_app():
                             value=True,
                             label="Batch mode: spread the whole batch in frame — items are split big/small relative to each other, no scale needed",
                         )
-                        big_fraction = gr.Slider(
-                            minimum=0.1, maximum=0.9, value=0.5, step=0.05,
-                            label="Batch 'BIG' share (top X% of items by size)",
-                        )
                         with gr.Accordion("One-off reference scale (no printed marker)", open=False):
                             ref_points_state = gr.State([])
                             ref_points_label = gr.HTML(_reference_points_html([]))
@@ -440,7 +443,7 @@ def build_app():
                 )
                 run.click(
                     inspect_image_ui,
-                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle, batch_toggle, big_fraction],
+                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle, batch_toggle],
                     [output, status],
                     concurrency_id="inspection",
                     concurrency_limit=1,

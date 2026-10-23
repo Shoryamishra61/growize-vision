@@ -93,6 +93,59 @@ def calibrate_from_two_point_reference(
     )
 
 
+CAMERA_PRIOR_ASSUMPTIONS = (
+    "DISTANCE_ASSUMED scale: estimated from an assumed ~300 mm handheld "
+    "capture distance and a ~66 deg phone-camera field of view, with a wide "
+    "uncertainty envelope. Values are estimates, not measurements; borderline "
+    "items are refused for review rather than forced."
+)
+
+
+def calibrate_from_camera_prior(
+    image_shape: tuple[int, ...],
+    settings: CalibrationSettings,
+    *,
+    assumed_distance_mm: float = 300.0,
+    fov_degrees: float = 66.0,
+    distance_uncertainty_fraction: float = 0.30,
+) -> Calibration:
+    """Referenceless scale estimate for single-item photos.
+
+    A typical handheld produce photo is taken at roughly arm's length with a
+    phone main camera.  Assuming that distance and FOV gives a uniform scale
+    with a deliberately wide uncertainty (default ±30%) so that only clearly
+    BIG or clearly SMALL items are graded; anything near a cut-off goes to
+    review.  This is the last-resort tier: marker, station, reference and
+    appearance priors all outrank it.
+    """
+    width = float(image_shape[1])
+    if width <= 0 or not math.isfinite(assumed_distance_mm) or assumed_distance_mm <= 0:
+        return _invalid("Camera prior needs a positive image width and distance.")
+    focal_px = (width / 2.0) / math.tan(math.radians(fov_degrees) / 2.0)
+    if not math.isfinite(focal_px) or focal_px <= 0:
+        return _invalid("Camera prior produced an invalid focal length.")
+    scale = assumed_distance_mm / focal_px
+    # 100 nominal units with the uncertainty fraction carried through the
+    # print-scale error term of the metrology envelope.
+    nominal = 100.0
+    return Calibration(
+        valid=True,
+        calibration_id="camera_prior_estimate",
+        marker_id=None,
+        marker_side_mm=nominal,
+        homography=[
+            [scale, 0.0, 0.0],
+            [0.0, scale, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        mm_per_px=scale,
+        corner_reprojection_rms_px=None,
+        marker_measurement_uncertainty_mm=nominal * distance_uncertainty_fraction,
+        source="camera_prior_estimate",
+        warnings=[CAMERA_PRIOR_ASSUMPTIONS],
+    )
+
+
 def _invalid(reason: str) -> Calibration:
     return Calibration(
         valid=False,

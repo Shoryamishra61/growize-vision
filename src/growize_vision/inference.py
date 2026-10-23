@@ -38,7 +38,7 @@ from .markers import (
 from .media import MediaError, image_sha256, resize_for_processing, validate_bgr_frame
 from .quality import assess_quality
 from .rendering import render_inspection
-from .scale import calibrate_from_two_point_reference
+from .scale import calibrate_from_camera_prior, calibrate_from_two_point_reference
 from .segmentation_cv import segment_foreground
 from .version import __version__
 
@@ -89,6 +89,10 @@ class InferenceRequest:
     # is the batch's own size distribution at 1 - big_fraction.
     batch_mode: bool = False
     batch_big_fraction: float = 0.5
+    # Allow the distance-assumed estimated scale when no marker, station,
+    # reference, or appearance priors exist.  Wide uncertainty; borderline
+    # items are refused rather than forced.
+    allow_scale_estimate: bool = False
 
 
 @dataclass
@@ -240,6 +244,19 @@ class InferenceService:
             calibration = self._apply_station_calibration(
                 station_key, calibration, processing_bgr.shape[:2], warnings
             )
+        if (
+            not calibration.valid
+            and request.allow_scale_estimate
+            and not self._crop_has_appearance_priors(request.crop_key)
+        ):
+            # Last-resort tier for single vegetables with no reference at all:
+            # a distance-assumed estimated scale.  Wide uncertainty keeps
+            # borderline items in review instead of guessing a grade.
+            calibration = calibrate_from_camera_prior(
+                processing_bgr.shape, self.settings.calibration
+            )
+            if calibration.valid:
+                warnings.extend(calibration.warnings)
         timings["calibration_ms"] = (time.perf_counter() - marker_start) * 1000.0
         warnings.extend(calibration.warnings)
         if not calibration.valid:
@@ -770,6 +787,26 @@ class InferenceService:
         if decision.status == Status.ACCEPTED:
             return Status.ACCEPTED, decision.size_class, list(decision.reasons)
         return decision.status, None, list(decision.reasons)
+
+    def _crop_has_appearance_priors(self, crop_key: str | None) -> bool:
+        """Appearance priors outrank the distance-assumed estimate."""
+        if not crop_key or crop_key == "auto":
+            return False
+        try:
+            canonical = self.policies.canonical_key(crop_key)
+            display = self.policies.policy(canonical).crop_name
+        except Exception:
+            return False
+        title_key = display.strip().replace(" ", "_").title()
+        if self.identity_service is None:
+            try:
+                from .crop_identity import CropIdentityService
+
+                self.identity_service = CropIdentityService()
+            except Exception:
+                return False
+        stats = getattr(self.identity_service, "stats", None) or {}
+        return title_key in stats
 
     def _apply_station_calibration(
         self,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -97,3 +99,41 @@ def test_markerless_image_without_reference_still_refuses() -> None:
     )
     assert result.status is Status.CALIBRATION_REQUIRED
     assert any("known length" in reason for reason in result.reasons)
+
+
+def test_camera_prior_scale_is_uniform_with_wide_uncertainty() -> None:
+    from growize_vision.scale import calibrate_from_camera_prior
+
+    calibration = calibrate_from_camera_prior((480, 640), SETTINGS)
+    assert calibration.valid
+    assert calibration.source == "camera_prior_estimate"
+    expected_scale = 300.0 / ((640 / 2) / math.tan(math.radians(66) / 2))
+    assert calibration.mm_per_px == pytest.approx(expected_scale, rel=1e-9)
+    # ±30% scale error carried through the envelope.
+    assert calibration.marker_measurement_uncertainty_mm == pytest.approx(30.0)
+    assert any("DISTANCE_ASSUMED" in w for w in calibration.warnings)
+
+
+def test_single_okra_grades_with_no_scale_of_any_kind() -> None:
+    service = InferenceService()
+    result = service.inspect_frame(
+        _markerless_scene(),
+        request=InferenceRequest(crop_key="okra", allow_scale_estimate=True),
+    )
+    # Okra has no appearance priors, so the distance-assumed tier engages.
+    assert result.calibration is not None
+    assert result.calibration.source == "camera_prior_estimate"
+    assert any(w.startswith("DISTANCE_ASSUMED") for w in result.warnings)
+    assert result.status in (Status.ACCEPTED, Status.REVIEW_BORDERLINE)
+    assert result.instances[0].measurement is not None
+    assert result.instances[0].measurement.metric == "centerline_length_mm"
+
+
+def test_scale_estimate_never_overrides_real_calibration_paths() -> None:
+    service = InferenceService()
+    result = service.inspect_frame(
+        _markerless_scene(),
+        request=InferenceRequest(crop_key="okra", allow_scale_estimate=False),
+    )
+    assert result.status is Status.CALIBRATION_REQUIRED
+    assert result.calibration is None or not result.calibration.valid
