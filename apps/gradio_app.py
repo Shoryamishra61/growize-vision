@@ -1,10 +1,5 @@
-class _DummySpaces:
-    @staticmethod
-    def GPU(fn=None, **kwargs):
-        if fn is not None: return fn
-        def wrapper(f): return f
-        return wrapper
-spaces = _DummySpaces()
+from __future__ import annotations
+
 
 """Growize Vision local operator console.
 
@@ -16,7 +11,6 @@ InferenceService.inspect_frame contract.  No media is uploaded to a cloud
 service; the default bind address is localhost.
 """
 
-from __future__ import annotations
 
 import html
 import os
