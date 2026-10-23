@@ -180,6 +180,20 @@ class PolicyRegistry:
             if demo
             else _parse_bands(canonical, crop.get("size_bands"), "size_bands")
         )
+        bands_derived = False
+        if bands is None and not demo and threshold is not None:
+            # Numeric 1/2/3 grading for every crop: when a published cut-off
+            # exists but no published multi-band table does, synthesise a
+            # clearly-labelled three-band table around that cut (±20%).  The
+            # edges are derived engineering bands, never claimed as published
+            # standards, and every decision that uses them says so.
+            cut = float(threshold)
+            bands = (
+                SizeBand(name="small", min_mm=0.0),
+                SizeBand(name="medium", min_mm=0.8 * cut),
+                SizeBand(name="large", min_mm=1.2 * cut),
+            )
+            bands_derived = True
         provenance = crop.get("threshold_provenance")
         provenance = dict(provenance) if isinstance(provenance, dict) else None
         if threshold is not None and not demo and provenance:
@@ -200,6 +214,7 @@ class PolicyRegistry:
             demo=bool(demo and (threshold is not None or demo_bands is not None)),
             min_visible_fraction=float(crop.get("min_visible_fraction", 0.98)),
             bands=bands,
+            bands_derived=bands_derived,
             provenance=provenance,
         )
 

@@ -107,8 +107,16 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
 
     x, y, w, h = instance.bbox_px
     label_y = max(18, y - 8)
+    band_grade_words = {"small": "1", "medium": "2", "large": "3"}
     if decision and decision.accepted and decision.band_name:
-        headline = decision.band_name.upper()
+        band = decision.band_name.lower()
+        number = band if band.isdigit() else band_grade_words.get(band)
+        if number and number.isdigit():
+            headline = f"GRADE {number}"
+            if band in band_grade_words:
+                headline += f" · {band.upper()}"
+        else:
+            headline = decision.band_name.upper()
     elif decision and decision.accepted and decision.size_class:
         headline = decision.size_class.value
     elif decision and decision.status != Status.CALIBRATION_REQUIRED:
@@ -146,19 +154,27 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
 
 def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.ndarray:
     canvas = image_bgr.copy()
-    # In unscaled/uncalibrated mode, skip internal overlay box so produce is clean and unobscured
-    if result.calibration and not result.calibration.valid:
-        return canvas
-
+    # Detected outlines are always drawn: the operator must see what the
+    # system found even when scale or policy blocked a numeric grade.
     for instance in result.instances:
         _draw_instance(canvas, instance)
+    # In unscaled/uncalibrated mode, skip internal overlay box so produce is
+    # clean and unobscured (an appearance overlay may replace this canvas).
+    if result.calibration and not result.calibration.valid:
+        return canvas
 
     h, w = canvas.shape[:2]
     margin = max(8, int(min(h, w) * 0.018))
     line_h = max(18, int(min(h, w) * 0.031))
     lines: list[str] = []
     if result.status == Status.ACCEPTED and (result.size_class or result.size_band):
-        grade = result.size_band.upper() if result.size_band else result.size_class.value
+        band_words = {"small": "1", "medium": "2", "large": "3"}
+        if result.size_band:
+            band = result.size_band.lower()
+            number = band if band.isdigit() else band_words.get(band)
+            grade = f"GRADE {number} · {band.upper()}" if number else result.size_band.upper()
+        else:
+            grade = result.size_class.value
         lines.append(f"RESULT  {grade}")
     elif result.calibration and not result.calibration.valid:
         lines.append("UNSCALED APPEARANCE MODE")
@@ -183,11 +199,14 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
     elif result.instances and (result.calibration and result.calibration.valid):
         lines.append(f"{len(result.instances)} instance(s) - see per-item rows")
     if result.calibration and result.calibration.valid:
-        lines.append(
-            f"calib {result.calibration.calibration_id[:26]} | "
-            f"marker {result.calibration.marker_id} @ "
-            f"{result.calibration.marker_side_mm:.1f} mm"
-        )
+        if result.calibration.calibration_id.startswith("camera_prior"):
+            lines.append("calib camera_prior_estimate (distance assumed)")
+        else:
+            lines.append(
+                f"calib {result.calibration.calibration_id[:26]} | "
+                f"marker {result.calibration.marker_id} @ "
+                f"{result.calibration.marker_side_mm:.1f} mm"
+            )
     if result.context.source_type.value:
         lines.append(
             f"source {result.context.source_type.value} | "

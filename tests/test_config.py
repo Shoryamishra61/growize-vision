@@ -89,8 +89,21 @@ def test_published_size_bands_load_for_graded_crops() -> None:
         policy = policies.policy(key)
         assert policy.bands is not None, key
         assert [band.min_mm for band in policy.bands] == edges, key
-    for key in ("okra", "spinach"):
-        assert policies.policy(key).bands is None, key
+        assert policy.bands_derived is False, key
+    # Crops with a published cut but no published band table get clearly
+    # labelled derived bands at ±20% of the cut so every item can receive a
+    # numeric 1/2/3 grade.  Published edges are never fabricated this way.
+    okra = policies.policy("okra")
+    assert okra.threshold_mm == 120.0
+    assert [band.min_mm for band in okra.bands] == [0.0, 96.0, 144.0]
+    assert okra.bands_derived is True
+    spinach = policies.policy("spinach")
+    assert spinach.bands is not None and spinach.bands_derived is True
+    # No published cut at all: no bands, derived or otherwise.
+    assert policies.policy("coriander").bands is None
+    assert policies.policy("coriander").bands_derived is False
+    # Demo policies stay binary/demo-banded; derivation is strict-only.
+    assert policies.policy("okra", demo=True).bands is None
 
 
 def test_demo_thresholds_are_opt_in_and_labelled() -> None:

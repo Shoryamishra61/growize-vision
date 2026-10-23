@@ -85,10 +85,12 @@ class InferenceRequest:
     station_mode: bool = False
     station_id: str | None = None
     # Batch mode: grade all items of one crop in a single frame RELATIVE to
-    # each other (pixel measurements, no scale of any kind).  The split point
-    # is the batch's own size distribution at 1 - big_fraction.
+    # each other (pixel measurements, no scale of any kind).  Items receive
+    # numeric grades 1..batch_grades (1 = smallest); the cut points are the
+    # batch's own size distribution at k/grades quantiles.
     batch_mode: bool = False
-    batch_big_fraction: float = 0.5
+    batch_big_fraction: float = 0.5  # retained for API compatibility; unused
+    batch_grades: int = 3
     # Allow the distance-assumed estimated scale when no marker, station,
     # reference, or appearance priors exist.  Wide uncertainty; borderline
     # items are refused rather than forced.
@@ -247,11 +249,14 @@ class InferenceService:
         if (
             not calibration.valid
             and request.allow_scale_estimate
+            and not request.batch_mode
             and not self._crop_has_appearance_priors(request.crop_key)
         ):
             # Last-resort tier for single vegetables with no reference at all:
             # a distance-assumed estimated scale.  Wide uncertainty keeps
-            # borderline items in review instead of guessing a grade.
+            # borderline items in review instead of guessing a grade.  Batch
+            # mode never uses it: ranking items within one frame is sharper
+            # than a ±30% distance guess shared by every item.
             calibration = calibrate_from_camera_prior(
                 processing_bgr.shape, self.settings.calibration
             )
@@ -300,12 +305,42 @@ class InferenceService:
 
                 self.identity_service = CropIdentityService()
             species_prediction = self.identity_service.predict_species(input_bgr)
-            # A scene-level suggestion must not assign a species to each separate item.
-            effective_crop = (species_prediction.species_key
-                              if species_prediction and len(segmentation.objects) == 1 else None)
+            low_confidence_crop = False
+            if species_prediction is None:
+                # Automation must not dead-end at the normal confidence floor:
+                # retry once at a labelled low-confidence floor.  The decision
+                # carries a LOW_CONFIDENCE_CROP warning so the verdict is never
+                # presented as a confident identification.
+                species_prediction = self.identity_service.predict_species(
+                    input_bgr, confidence_floor=0.40
+                )
+                low_confidence_crop = species_prediction is not None
+            item_count = len(segmentation.objects)
+            # Scene-level species apply to the whole frame.  A one-crop batch
+            # is the production reality (one conveyor, one crop), so the
+            # prediction is applied to every item with an explicit warning
+            # instead of dead-ending multi-item frames on POLICY_REQUIRED.
+            effective_crop = species_prediction.species_key if species_prediction else None
             request = replace(request, crop_key=effective_crop)
             if effective_crop is None:
-                warnings.append("AUTO_CROP_UNRESOLVED: select a crop explicitly or recapture one separated item.")
+                warnings.append(
+                    "AUTO_CROP_UNRESOLVED: crop could not be identified; batch "
+                    "mode still grades items relative to each other, or select "
+                    "the crop explicitly."
+                )
+            else:
+                if item_count > 1:
+                    warnings.append(
+                        f"SCENE_LEVEL_CROP: detected species '{effective_crop}' "
+                        f"applied to all {item_count} items; assumes a single-crop "
+                        "batch."
+                    )
+                if low_confidence_crop:
+                    warnings.append(
+                        "LOW_CONFIDENCE_CROP: classifier score was below the "
+                        "normal operating floor; the crop label and its grade "
+                        "carry this uncertainty."
+                    )
             timings["crop_identity_ms"] = (time.perf_counter() - identity_started) * 1000
 
         policy = None
@@ -464,11 +499,7 @@ class InferenceService:
             # Priority order is safety-first: no physical millimetre claim
             # without trusted calibration, then quality, then occlusion, then
             # policy, then metrology.  Batch mode may still grade relatively.
-            batch_eligible = bool(
-                request.batch_mode
-                and policy is not None
-                and (policy.threshold_mm is not None or policy.bands)
-            )
+            batch_eligible = bool(request.batch_mode)
             if not calibration.valid and not batch_eligible:
                 instance.decision = GradeDecision(
                     size_class=None,
@@ -560,6 +591,20 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
+            elif request.batch_mode and (
+                not calibration.valid
+                or policy is None
+                or (policy.threshold_mm is None and not policy.bands)
+            ):
+                # Batch mode grades items relative to the whole frame once
+                # every instance exists.  No crop policy is required for the
+                # relative split (grades are sizes within this frame, not
+                # crop-specific millimetre claims).
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.REVIEW_BORDERLINE,
+                    reasons=["BATCH_RELATIVE_PENDING"],
+                )
             elif policy is None or policy_error:
                 instance.decision = GradeDecision(
                     size_class=None,
@@ -576,14 +621,6 @@ class InferenceService:
                     "threshold exists for this crop. Physical measurement is "
                     "withheld in strict mode."
                 ]
-            elif not calibration.valid:
-                # Batch mode, quality gates passed: measured later relative to
-                # the whole frame once every instance has been evaluated.
-                instance.decision = GradeDecision(
-                    size_class=None,
-                    status=Status.REVIEW_BORDERLINE,
-                    reasons=["BATCH_RELATIVE_PENDING"],
-                )
             else:
                 try:
                     measurement, contour_mm = measure_contour(
@@ -632,9 +669,14 @@ class InferenceService:
         """Grade items relative to the frame's own size distribution.
 
         No scale of any kind is required: within one camera view, pixel
-        measurements are directly comparable, so the split point is a
-        quantile of the batch itself.  This is uncalibrated by design and
-        every decision says so; it is a batch sorter, not a measuring tool.
+        measurements are directly comparable, so the cut points are quantiles
+        of the batch itself.  Every item receives a numeric grade 1..G
+        (1 = smallest; default G = 3, i.e. 1 = small, 2 = medium, 3 = big).
+        This is uncalibrated by design and every decision says so; it is a
+        batch sorter, not a measuring tool.  A crop policy is optional: with
+        one, the ranking uses that crop's size metric; without one (crop
+        unresolved or no published rule, e.g. coriander bunches) the ranking
+        is on plain projected size and makes no crop-specific claim.
         """
         pending = [
             i for i in instances
@@ -642,13 +684,13 @@ class InferenceService:
         ]
         if not pending:
             return
-        if len(pending) < 2 or policy is None:
+        if len(pending) < 2:
             for instance in pending:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.CALIBRATION_REQUIRED,
                     reasons=[
-                        "BATCH_SPLIT_NEEDS_MORE_ITEMS: batch mode splits items "
+                        "BATCH_SPLIT_NEEDS_MORE_ITEMS: batch mode grades items "
                         "relative to each other; present at least two items of "
                         "the crop in frame, or commission the station for "
                         "measured grading."
@@ -657,38 +699,67 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                 )
             return
+        metric = policy.metric if policy is not None else "min_area_rect_long_mm"
         measured = sorted(
             (
-                (instance, _relative_px_value(instance.contour_px, policy.metric))
+                (instance, _relative_px_value(instance.contour_px, metric))
                 for instance in pending
             ),
             key=lambda pair: pair[1],
         )
         values = [value for _, value in measured]
-        big_fraction = min(max(float(request.batch_big_fraction), 0.05), 0.95)
-        cut = float(np.quantile(values, 1.0 - big_fraction))
+        grades = min(max(int(request.batch_grades), 2), 3)
         margin = 0.05
+        cuts = [float(np.quantile(values, k / grades)) for k in range(1, grades)]
+        cut_text = "/".join(f"{cut:.0f}" for cut in cuts)
         total = len(measured)
         for rank, (instance, value) in enumerate(measured, start=1):
-            if value >= cut * (1.0 + margin):
-                size_class, status = SizeClass.BIG, Status.ACCEPTED
-            elif value <= cut * (1.0 - margin):
-                size_class, status = SizeClass.SMALL, Status.ACCEPTED
-            else:
-                size_class, status = None, Status.REVIEW_BORDERLINE
+            band_index = 0
+            for cut in cuts:
+                if value >= cut:
+                    band_index += 1
+            near_cut = any(abs(value - cut) <= cut * margin for cut in cuts)
+            reasons = [
+                f"BATCH_RELATIVE: item {rank}/{total} measures {value:.0f} px "
+                f"against batch cut point(s) {cut_text} px "
+                f"({grades} numeric grades, 1 = smallest).",
+                "BATCH_RELATIVE_UNCALIBRATED: sizes are comparable within "
+                "this frame only; not millimetres, not comparable across "
+                "batches or camera positions.",
+            ]
+            if policy is None:
+                reasons.append(
+                    "CROP_UNRESOLVED: no crop policy applied; grades rank "
+                    "projected size within this frame without a crop claim."
+                )
+            if near_cut:
+                instance.decision = GradeDecision(
+                    size_class=None,
+                    status=Status.REVIEW_BORDERLINE,
+                    band_name=None,
+                    reasons=[
+                        *reasons,
+                        "VALUE_NEAR_BATCH_CUT: item sits within the ±5% margin "
+                        "of a cut point; grade withheld rather than guessed.",
+                    ],
+                    policy=policy,
+                    policy_version=getattr(policy, "policy_version", None),
+                )
+                continue
+            grade_number = band_index + 1
+            size_class = None
+            if grade_number == 1:
+                size_class = SizeClass.SMALL
+            elif grade_number == grades:
+                size_class = SizeClass.BIG
+            reasons[0] += f" Grade {grade_number}."
             instance.decision = GradeDecision(
                 size_class=size_class,
-                status=status,
-                reasons=[
-                    f"BATCH_RELATIVE: item {rank}/{total} measures {value:.0f} px "
-                    f"against the batch split of {cut:.0f} px (top "
-                    f"{int(round(big_fraction * 100))}% graded BIG).",
-                    "BATCH_RELATIVE_UNCALIBRATED: sizes are comparable within "
-                    "this frame only; not millimetres, not comparable across "
-                    "batches or camera positions.",
-                ],
+                status=Status.ACCEPTED,
+                band_name=str(grade_number),
+                reasons=reasons,
                 policy=policy,
-                policy_version=policy.policy_version,
+                policy_version=getattr(policy, "policy_version", None),
             )
 
     def _summarise(
@@ -721,6 +792,55 @@ class InferenceService:
             if len(instances) == 1 and instances[0].decision is not None:
                 reasons.extend(instances[0].decision.reasons)
             return Status.CALIBRATION_REQUIRED, None, reasons
+        if len(instances) > 1:
+            batch_graded = [
+                i for i in instances
+                if i.decision is not None
+                and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
+            ]
+            if batch_graded:
+                counts: dict[str, int] = {}
+                review = 0
+                for i in batch_graded:
+                    band = i.decision.band_name
+                    if band:
+                        counts[band] = counts.get(band, 0) + 1
+                    else:
+                        review += 1
+                summary = ", ".join(
+                    f"{counts[band]} x grade {band}"
+                    for band in sorted(counts, key=int)
+                )
+                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
+                small = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.SMALL)
+                extra = f" ({big} BIG, {small} SMALL)" if big or small else ""
+                return (
+                    Status.MULTIPLE_OBJECTS,
+                    None,
+                    [
+                        f"BATCH_SPLIT: {summary}{extra}, {review} REVIEW — numeric "
+                        "grades are relative to this frame's items; 1 = smallest, "
+                        "no millimetres."
+                    ],
+                )
+            statuses = [i.decision.status if i.decision else Status.REVIEW_BORDERLINE for i in instances]
+            if any(s == Status.OCCLUDED for s in statuses):
+                return (
+                    Status.MULTIPLE_OBJECTS,
+                    None,
+                    ["Multiple instances; one or more are occluded. See per-instance rows."],
+                )
+            if any(s == Status.REVIEW_BORDERLINE for s in statuses):
+                return (
+                    Status.MULTIPLE_OBJECTS,
+                    None,
+                    ["Multiple instances; at least one is borderline. See per-instance rows."],
+                )
+            return (
+                Status.MULTIPLE_OBJECTS,
+                None,
+                ["Multiple vegetables detected; no single aggregate size class is emitted."],
+            )
         if segmentation.background_busy:
             return (
                 Status.OUT_OF_DISTRIBUTION,
@@ -744,42 +864,6 @@ class InferenceService:
                     "approved or published-reference policy exists, or demo mode is "
                     "explicitly enabled."
                 ],
-            )
-        if len(instances) > 1:
-            batch_graded = [
-                i for i in instances
-                if i.decision is not None
-                and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
-            ]
-            if batch_graded:
-                big = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.BIG)
-                small = sum(1 for i in batch_graded if i.decision.size_class is SizeClass.SMALL)
-                review = len(batch_graded) - big - small
-                return (
-                    Status.MULTIPLE_OBJECTS,
-                    None,
-                    [
-                        f"BATCH_SPLIT: {big} BIG, {small} SMALL, {review} REVIEW "
-                        "(relative to this frame's items; no millimetres)."
-                    ],
-                )
-            statuses = [i.decision.status if i.decision else Status.REVIEW_BORDERLINE for i in instances]
-            if any(s == Status.OCCLUDED for s in statuses):
-                return (
-                    Status.MULTIPLE_OBJECTS,
-                    None,
-                    ["Multiple instances; one or more are occluded. See per-instance rows."],
-                )
-            if any(s == Status.REVIEW_BORDERLINE for s in statuses):
-                return (
-                    Status.MULTIPLE_OBJECTS,
-                    None,
-                    ["Multiple instances; at least one is borderline. See per-instance rows."],
-                )
-            return (
-                Status.MULTIPLE_OBJECTS,
-                None,
-                ["Multiple vegetables detected; no single aggregate size class is emitted."],
             )
         decision = instances[0].decision
         if decision is None:

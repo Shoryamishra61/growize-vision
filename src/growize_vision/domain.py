@@ -228,6 +228,7 @@ class GradePolicy:
     demo: bool = False
     min_visible_fraction: float = 0.98
     bands: tuple[SizeBand, ...] | None = None
+    bands_derived: bool = False
     provenance: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -246,6 +247,7 @@ class GradePolicy:
             "demo": self.demo,
             "min_visible_fraction": self.min_visible_fraction,
             "bands": [band.to_dict() for band in self.bands] if self.bands else None,
+            "bands_derived": self.bands_derived,
             "provenance": dict(self.provenance) if self.provenance else None,
         }
 

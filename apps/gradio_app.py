@@ -105,7 +105,18 @@ def present_result(result, session=None):
     title, message = MESSAGES.get(
         result.status, ("Cannot verify", "No verified size result is available.")
     )
-    if result.status != Status.ACCEPTED and result.appearance_estimate is not None:
+    if result.status not in (Status.ACCEPTED, Status.MULTIPLE_OBJECTS) and any(
+        w.startswith("AUTO_CROP_UNRESOLVED") for w in result.warnings
+    ):
+        title = "Crop unidentified"
+        message = (
+            "The vegetable could not be identified with usable confidence. Pick "
+            "the crop from the list for a full measured grade — or, for a batch "
+            "of one kind of vegetable, tick 'Batch mode': items are still "
+            "graded 1/2/3 by size relative to each other without needing the "
+            "crop name."
+        )
+    elif result.status != Status.ACCEPTED and result.appearance_estimate is not None:
         estimate = result.appearance_estimate
         title = f"Estimated {estimate['appearance_size_class']} (uncalibrated)"
         message = (
@@ -128,17 +139,29 @@ def present_result(result, session=None):
     elif result.status == Status.MULTIPLE_OBJECTS and any(
         r.startswith("BATCH_SPLIT:") for r in result.reasons
     ):
-        big = sum(1 for i in result.instances if i.decision and i.decision.size_class is not None and i.decision.size_class.value == "BIG")
-        small = sum(1 for i in result.instances if i.decision and i.decision.size_class is not None and i.decision.size_class.value == "SMALL")
-        review = len(result.instances) - big - small
-        title = f"Batch split: {big} BIG · {small} SMALL"
+        counts: dict[str, int] = {}
+        review = 0
+        for i in result.instances:
+            band = i.decision.band_name if i.decision else None
+            if band:
+                counts[band] = counts.get(band, 0) + 1
+            else:
+                review += 1
+        parts = [
+            f"{counts[band]} x grade {band}" for band in sorted(counts, key=int)
+        ]
+        title = "Batch grades: " + " · ".join(parts) + (f" · {review} review" if review else "")
         message = (
-            f"{big} big, {small} small, {review} to review. Items were split "
-            "relative to each other in this frame — no scale needed for a batch "
-            "split. Per-item outlines are drawn on the output image. For "
-            "millimetre grades (cross-batch records, standards) use station or "
-            "reference scale."
+            f"{', '.join(parts)}"
+            + (f", {review} to review" if review else "")
+            + ". Every item gets a numeric grade (1 = smallest, 3 = biggest), "
+            "ranked relative to each other in this frame — no scale needed for "
+            "a batch split. Per-item outlines and grade numbers are drawn on "
+            "the output image. For millimetre grades (cross-batch records, "
+            "standards) use station or reference scale."
         )
+        if any(w.startswith("CROP_UNRESOLVED") for w in result.warnings):
+            message += " Crop could not be identified: grades rank size only, without a crop-specific claim."
     elif result.status == Status.ACCEPTED and (
         result.size_class is not None or result.size_band is not None
     ):
@@ -146,7 +169,13 @@ def present_result(result, session=None):
             (i.measurement for i in result.instances if i.measurement is not None), None
         )
         crop = result.policy.crop_name if result.policy else "the crop rule"
-        grade = (result.size_band or result.size_class.value).upper()
+        band_words = {"small": "1", "medium": "2", "large": "3"}
+        if result.size_band:
+            band = result.size_band.lower()
+            number = band if band.isdigit() else band_words.get(band)
+            grade = f"Grade {number} · {band.upper()}" if number else result.size_band.upper()
+        else:
+            grade = result.size_class.value.upper()
         title = grade
         message = (
             f"Measured {measurement.value_mm:.1f} ± {measurement.uncertainty_mm:.1f} mm "
@@ -154,6 +183,11 @@ def present_result(result, session=None):
             "rules. Literature/market reference - not validated on your local "
             "population."
         )
+        if result.policy is not None and result.policy.bands_derived:
+            message += (
+                " Grade bands are derived at ±20% of the published cut-off for "
+                "numeric 1/2/3 grading (1 = small, 2 = medium, 3 = big)."
+            )
         if any(w.startswith("DISTANCE_ASSUMED") for w in result.warnings):
             message += " Scale is distance-assumed (no reference in photo): an estimate, not a measurement."
         if session is not None:

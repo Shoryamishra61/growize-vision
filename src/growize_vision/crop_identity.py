@@ -263,11 +263,15 @@ class CropIdentityService:
 
         return np.concatenate([h_hist, s_hist, v_hist, means, stds, [area_ratio, aspect, solidity]])
 
-    def predict_species(self, img_bgr: np.ndarray) -> SpeciesPrediction | None:
+    def predict_species(
+        self, img_bgr: np.ndarray, *, confidence_floor: float | None = None
+    ) -> SpeciesPrediction | None:
         """Return a supported model prediction, or abstain when it is unavailable.
 
         Confidence is the classifier score, not a guarantee of correctness or
         proof that an object is produce. Geometry must never rewrite that score.
+        ``confidence_floor`` may be lowered by callers for explicitly labelled
+        low-confidence automation; it never raises the stored floor.
         """
         if (
             not isinstance(img_bgr, np.ndarray)
@@ -301,13 +305,15 @@ class CropIdentityService:
                 if features is None:
                     return None
                 probabilities = self.model.predict_proba([features])[0]
-            return self._prediction_from_probabilities(probabilities)
+            return self._prediction_from_probabilities(probabilities, confidence_floor)
         except Exception:
             # A broken optional provider must leave calibrated/manual inspection usable.
             logger.exception("Species inference failed; withholding automatic crop selection")
             return None
 
-    def _prediction_from_probabilities(self, probabilities: np.ndarray) -> SpeciesPrediction | None:
+    def _prediction_from_probabilities(
+        self, probabilities: np.ndarray, confidence_floor: float | None = None
+    ) -> SpeciesPrediction | None:
         probabilities = np.asarray(probabilities, dtype=float)
         if (
             probabilities.shape != (len(self.classes),)
@@ -320,7 +326,10 @@ class CropIdentityService:
             return None
         index = int(np.argmax(probabilities))
         confidence = float(probabilities[index])
-        if confidence < getattr(self, "confidence_floor", 0.65):
+        floor = getattr(self, "confidence_floor", 0.65)
+        if confidence_floor is not None:
+            floor = min(float(confidence_floor), floor)
+        if confidence < floor:
             return None
         species = str(self.classes[index])
         if species == "Unknown":

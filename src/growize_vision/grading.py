@@ -75,11 +75,19 @@ def _evaluate_bands(
         )
         disclaimer_reasons, disclaimer_warning = _provenance_disclaimer(policy)
         reasons = [f"INTERVAL_ENTIRELY_WITHIN_BAND:{band.name}", *disclaimer_reasons]
+        if policy.bands_derived:
+            reasons.append(
+                "DERIVED_BANDS_AROUND_PUBLISHED_CUT: band edges at ±20% of the "
+                "published cut-off are engineering-derived for numeric 1/2/3 "
+                "grading, not published band edges."
+            )
         warning = (
             "DEMO BANDS ONLY: these cut-offs are not ARL/Growize-approved grades."
             if policy.demo
             else disclaimer_warning
         )
+        if policy.bands_derived and warning:
+            warning += " Band edges are derived (±20% of the published cut)."
         return GradeDecision(
             size_class=size_class,
             status=Status.ACCEPTED,

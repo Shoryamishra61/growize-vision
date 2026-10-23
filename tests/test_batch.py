@@ -1,4 +1,4 @@
-"""Batch-relative grading: big/small split with no scale of any kind."""
+"""Batch-relative grading: numeric 1/2/3 grades with no scale of any kind."""
 
 from __future__ import annotations
 
@@ -23,39 +23,84 @@ def batch_scene() -> np.ndarray:
     return np.clip(scene.astype(int) + rng.integers(-7, 8, scene.shape), 0, 255).astype(np.uint8)
 
 
-def test_batch_median_split_needs_no_scale() -> None:
+def test_batch_tercile_grades_need_no_scale() -> None:
     service = InferenceService()
     result = service.inspect_frame(
         batch_scene(),
-        request=InferenceRequest(crop_key="potato", batch_mode=True, batch_big_fraction=0.5),
+        request=InferenceRequest(crop_key="potato", batch_mode=True),
     )
     assert result.status is Status.MULTIPLE_OBJECTS
     assert any(r.startswith("BATCH_SPLIT:") for r in result.reasons)
-    graded = [i for i in result.instances if i.decision and i.decision.size_class]
-    big = [i for i in graded if i.decision.size_class is SizeClass.BIG]
-    small = [i for i in graded if i.decision.size_class is SizeClass.SMALL]
+    bands = sorted(
+        (i.decision.band_name for i in result.instances if i.decision and i.decision.band_name),
+        key=int,
+    )
+    assert bands == ["1", "2", "3"]  # every item gets a numeric grade
+    big = [
+        i for i in result.instances
+        if i.decision and i.decision.size_class is SizeClass.BIG
+    ]
+    small = [
+        i for i in result.instances
+        if i.decision and i.decision.size_class is SizeClass.SMALL
+    ]
+    assert len(big) == 1 and len(small) == 1  # grade 3 = BIG, grade 1 = SMALL
+    for instance in result.instances:
+        assert instance.measurement is None  # no millimetres claimed
+
+
+def test_batch_binary_split_still_available() -> None:
+    service = InferenceService()
+    result = service.inspect_frame(
+        batch_scene(),
+        request=InferenceRequest(crop_key="potato", batch_mode=True, batch_grades=2),
+    )
+    graded = [
+        i for i in result.instances
+        if i.decision and i.decision.size_class is not None
+    ]
     review = [
         i for i in result.instances
         if i.decision and i.decision.status is Status.REVIEW_BORDERLINE
     ]
-    assert len(big) == 1 and len(small) == 1  # largest and smallest
-    assert len(review) == 1  # the middle item sits inside the 5% split margin
-    for instance in result.instances:
-        assert all(i.measurement is None for i in result.instances)  # no mm claimed
+    assert len(graded) == 2  # clear BIG and SMALL
+    assert len(review) == 1  # the median item sits inside the ±5% margin
+    reasons = " ".join(r for i in result.instances if i.decision for r in i.decision.reasons)
+    assert "BATCH_RELATIVE_UNCALIBRATED" in reasons
 
 
-def test_batch_top_third_split() -> None:
+def test_batch_grades_without_any_crop_policy() -> None:
+    """Auto-detect failure must not dead-end a batch: sizes still grade 1/2/3."""
     service = InferenceService()
     result = service.inspect_frame(
         batch_scene(),
-        request=InferenceRequest(crop_key="potato", batch_mode=True, batch_big_fraction=0.34),
+        request=InferenceRequest(crop_key=None, batch_mode=True),
     )
-    graded = [i for i in result.instances if i.decision and i.decision.size_class]
-    assert len(graded) == 3  # well-separated sizes: no item lands in the margin
-    big = [i for i in graded if i.decision.size_class is SizeClass.BIG]
-    assert len(big) == 1
+    assert result.status is Status.MULTIPLE_OBJECTS
+    assert any(r.startswith("BATCH_SPLIT:") for r in result.reasons)
+    bands = sorted(
+        (i.decision.band_name for i in result.instances if i.decision and i.decision.band_name),
+        key=int,
+    )
+    assert bands == ["1", "2", "3"]
     reasons = " ".join(r for i in result.instances if i.decision for r in i.decision.reasons)
-    assert "BATCH_RELATIVE_UNCALIBRATED" in reasons
+    assert "CROP_UNRESOLVED" in reasons
+
+
+def test_coriander_bunches_grade_in_batch_without_a_threshold() -> None:
+    """Leafy crops with no published size rule still grade as batches."""
+    service = InferenceService()
+    result = service.inspect_frame(
+        batch_scene(),
+        request=InferenceRequest(crop_key="coriander", batch_mode=True),
+    )
+    assert result.status is Status.MULTIPLE_OBJECTS
+    assert any(r.startswith("BATCH_SPLIT:") for r in result.reasons)
+    bands = sorted(
+        (i.decision.band_name for i in result.instances if i.decision and i.decision.band_name),
+        key=int,
+    )
+    assert bands == ["1", "2", "3"]
 
 
 def test_batch_single_item_explains_it_cannot_split() -> None:

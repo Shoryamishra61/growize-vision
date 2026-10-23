@@ -86,7 +86,10 @@ def test_input_screen_preserves_failure_meaning(demo_dir, reason, status):
     assert result.size_class is None
 
 
-def test_scene_suggestion_never_labels_separate_instances(demo_dir, monkeypatch):
+def test_scene_suggestion_labels_all_items_of_a_single_crop_batch(demo_dir, monkeypatch):
+    """One-crop batches are the production reality: a scene-level prediction
+    applies to every item, carries an explicit SCENE_LEVEL_CROP warning, and
+    never silently becomes a per-instance identification claim."""
     from growize_vision.segmentation_cv import segment_foreground
 
     def two_instances(*args, **kwargs):
@@ -101,5 +104,27 @@ def test_scene_suggestion_never_labels_separate_instances(demo_dir, monkeypatch)
         frame, request=InferenceRequest(crop_key="auto", marker_side_mm=50, demo_policy=True))
     assert len(result.instances) == 2
     assert result.to_dict()["species_prediction_scope"] == "scene"
-    assert all(instance.crop_key is None for instance in result.instances)
-    assert all(instance.decision.size_class is None for instance in result.instances)
+    assert all(instance.crop_key == "potato" for instance in result.instances)
+    assert any(w.startswith("SCENE_LEVEL_CROP") for w in result.warnings)
+
+
+def test_low_confidence_prediction_is_used_with_a_label(demo_dir):
+    """Below the normal floor the crop is still applied, never silently."""
+    identity = fake_identity(None)
+    fallback = SpeciesPrediction("okra", "Okra", 0.45, {"Okra": 0.45, "Potato": 0.4, "Onion": 0.15})
+    calls = {"n": 0}
+
+    def predict(image, *, confidence_floor=None):
+        calls["n"] += 1
+        if confidence_floor is None:
+            return None
+        return fallback
+
+    identity.predict_species = predict
+    service = InferenceService(identity_service=identity)
+    frame = load_image_file(demo_dir / "potato_small_synthetic.png").bgr
+    result = service.inspect_frame(
+        frame, request=InferenceRequest(crop_key="auto", marker_side_mm=50, demo_policy=True))
+    assert calls["n"] == 2
+    assert result.policy is not None and result.policy.crop_key == "okra"
+    assert any(w.startswith("LOW_CONFIDENCE_CROP") for w in result.warnings)
