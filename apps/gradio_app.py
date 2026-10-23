@@ -101,6 +101,29 @@ READY = result_html(
 )
 
 
+def _vegetable_name(result):
+    """Best available vegetable name for titles (upper) and prose (lower)."""
+    if result.policy is not None and result.policy.crop_name:
+        return result.policy.crop_name.strip(), result.policy.crop_name.strip().lower()
+    prediction = result.species_prediction or {}
+    for key in ("crop_name", "species_key"):
+        value = prediction.get(key)
+        if value:
+            name = str(value).replace("_", " ").strip()
+            return name.upper(), name.lower()
+    return "VEGETABLE", "vegetable"
+
+
+def _plural(name_lower: str, count: int) -> str:
+    if count == 1:
+        return name_lower
+    if name_lower.endswith(("o", "o ")) and name_lower.strip().lower() in (
+        "potato", "tomato", "mango"
+    ):
+        return name_lower + "es"
+    return name_lower + "s"
+
+
 def present_result(result, session=None):
     title, message = MESSAGES.get(
         result.status, ("Cannot verify", "No verified size result is available.")
@@ -157,10 +180,12 @@ def present_result(result, session=None):
         if big:
             parts.append(f"{big} BIG")
         total = small + medium + big
-        title = " · ".join(parts) if parts else "Batch result"
+        name_upper, name_lower = _vegetable_name(result)
+        title = f"{name_upper} · {' · '.join(parts)}" if parts else "Batch result"
         message = (
-            f"{total} item{'s' if total != 1 else ''} graded: {' · '.join(parts)}. "
-            "Each item is outlined and labelled on the output image."
+            f"{total} {_plural(name_lower, total)} in this photo graded: "
+            f"{' · '.join(parts)}. Each item is outlined and labelled with its "
+            "size on the output image."
         )
         if any(
             i.decision and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
@@ -170,7 +195,7 @@ def present_result(result, session=None):
         else:
             message += " Graded against published size references using estimated scale."
         if any(w.startswith("CROP_UNRESOLVED") for w in result.warnings):
-            message += " Crop not identified: grades are by size only."
+            message += " Vegetable not identified: grades are by size only."
     elif result.status == Status.ACCEPTED and (
         result.size_class is not None or result.size_band is not None
     ):
@@ -184,7 +209,8 @@ def present_result(result, session=None):
         if not word and result.size_class:
             word = result.size_class.value.lower()
         number = {"small": 1, "medium": 2, "big": 3}.get(word)
-        title = f"{word.upper()} ({number})" if number else (word or "").upper()
+        name_upper, _ = _vegetable_name(result)
+        title = f"{name_upper} — {word.upper()} ({number})" if number else f"{name_upper} — {(word or '').upper()}"
         message = (
             f"{crop}: {measurement.value_mm:.0f} ± {measurement.uncertainty_mm:.0f} mm "
             f"→ {word.upper()}. "

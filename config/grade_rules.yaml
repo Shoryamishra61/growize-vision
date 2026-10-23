@@ -396,7 +396,7 @@ crops:
     supported_poses: [overhead, modest_tilt]
   green_bean:
     display_name: Green / French bean
-    aliases: [sem, beans, french_bean, pole_bean, guar, cluster_bean]
+    aliases: [sem, bean, beans, french_bean, pole_bean, guar, cluster_bean]
     physical_unit: single_pod
     metric: centerline_length_mm
     metric_description: Curved centreline length of the pod, in millimetres; ambiguous branched skeletons are refused.

@@ -127,31 +127,37 @@ def _panel(
     cv2.addWeighted(overlay, alpha, image, 1.0 - alpha, 0, dst=image)
 
 
-def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
-    """Tight silhouette outline plus one readable grade chip per item.
+def _instance_colour(instance: InstanceObservation) -> tuple[int, int, int]:
+    word = _grade_word(instance.decision)
+    return _GRADE_COLOURS_BGR.get(word, _NEUTRAL)
 
-    No rotated bounding boxes, axis arrows, or raw status strings: operators
-    on a packing line need the item's outline and its size word, nothing else.
-    """
+
+def _draw_instance_mark(image: np.ndarray, instance: InstanceObservation) -> None:
+    """Tint + tight outline of the detected silhouette (no text)."""
     contour = np.asarray(instance.contour_px, dtype=np.float32).reshape(-1, 1, 2)
-    decision = instance.decision
-    word = _grade_word(decision)
-    colour = _GRADE_COLOURS_BGR.get(word, _NEUTRAL)
+    colour = _instance_colour(instance)
     points = contour.astype(np.int32)
-    # Subtle tint inside the item so the grade colour groups visually.
     fill = image.copy()
     cv2.drawContours(fill, [points], -1, colour, thickness=-1)
     cv2.addWeighted(fill, 0.16, image, 0.84, 0, dst=image)
-    # Tight outline of the actual detected silhouette.
     cv2.drawContours(image, [points], -1, colour, 3, cv2.LINE_AA)
 
+
+def _draw_instance_chip(image: np.ndarray, instance: InstanceObservation) -> None:
+    """One readable grade chip per item.
+
+    Chips are drawn in a second pass after every mark, so one item's tint can
+    never paint over a neighbour's label.
+    """
+    decision = instance.decision
+    word = _grade_word(decision)
+    colour = _instance_colour(instance)
     x, y, w, h = instance.bbox_px
     if word:
         number = _GRADE_NUMBERS.get(word)
         label = f"{word.upper()} ({number})" if number else word.upper()
         _chip(image, label, max(4, x), max(26, y), colour)
     elif instance.measurement is None:
-        # Ungraded item: small neutral tick so it is still visible.
         _chip(image, "CHECK", max(4, x), max(26, y), _NEUTRAL, scale=0.5)
     if instance.measurement:
         m = instance.measurement
@@ -166,12 +172,47 @@ def _draw_instance(image: np.ndarray, instance: InstanceObservation) -> None:
         )
 
 
+def _batch_banner_line(result: InspectionResult) -> str | None:
+    """"POTATO  2 BIG · 1 MEDIUM" for graded batches, else None."""
+    if len(result.instances) < 2:
+        return None
+    accepted = [i for i in result.instances if i.decision is not None and i.decision.accepted]
+    if not accepted:
+        return None
+    small = sum(1 for i in accepted if i.decision.size_class is SizeClass.SMALL)
+    big = sum(1 for i in accepted if i.decision.size_class is SizeClass.BIG)
+    medium = len(accepted) - small - big
+    parts = []
+    if small:
+        parts.append(f"{small} SMALL")
+    if medium:
+        parts.append(f"{medium} MEDIUM")
+    if big:
+        parts.append(f"{big} BIG")
+    name = _crop_display_name(result)
+    return f"{name}  {' · '.join(parts)}"
+
+
+def _crop_display_name(result: InspectionResult) -> str:
+    """Best available vegetable name, always something readable."""
+    if result.policy is not None and result.policy.crop_name:
+        return result.policy.crop_name.upper()
+    prediction = result.species_prediction or {}
+    for key in ("crop_name", "species_key"):
+        value = prediction.get(key)
+        if value:
+            return str(value).replace("_", " ").upper()
+    return "VEGETABLE"
+
+
 def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.ndarray:
     canvas = image_bgr.copy()
     # Detected outlines are always drawn: the operator must see what the
     # system found even when scale or policy blocked a numeric grade.
     for instance in result.instances:
-        _draw_instance(canvas, instance)
+        _draw_instance_mark(canvas, instance)
+    for instance in result.instances:
+        _draw_instance_chip(canvas, instance)
     # In unscaled/uncalibrated mode, skip internal overlay box so produce is
     # clean and unobscured (an appearance overlay may replace this canvas).
     if result.calibration and not result.calibration.valid:
@@ -181,7 +222,10 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
     margin = max(8, int(min(h, w) * 0.018))
     line_h = max(18, int(min(h, w) * 0.031))
     lines: list[str] = []
-    if result.status == Status.ACCEPTED and (result.size_class or result.size_band):
+    batch_line = _batch_banner_line(result)
+    if batch_line:
+        lines.append(f"RESULT  {batch_line}")
+    elif result.status == Status.ACCEPTED and (result.size_class or result.size_band):
         band = (result.size_band or "").lower()
         word = _NUMBER_WORDS.get(band) or ({"large": "big"}.get(band))
         if not word and result.size_class:
@@ -191,7 +235,7 @@ def render_inspection(image_bgr: np.ndarray, result: InspectionResult) -> np.nda
             grade = f"{word.upper()} ({number})" if number else word.upper()
         else:
             grade = (result.size_band or result.size_class.value).upper()
-        lines.append(f"RESULT  {grade}")
+        lines.append(f"RESULT  {_crop_display_name(result)}  {grade}")
     elif result.calibration and not result.calibration.valid:
         lines.append("UNSCALED APPEARANCE MODE")
         if len(result.instances) > 1:
