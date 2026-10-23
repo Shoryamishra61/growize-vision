@@ -60,6 +60,12 @@ class InferenceRequest:
     reference_points_px: tuple[float, float, float, float] | None = None
     reference_length_mm: float | None = None
     reference_uncertainty_mm: float = 2.0
+    # Station mode for fixed cameras: the first frame that produces a valid
+    # calibration (marker or reference length) is remembered; later frames are
+    # graded from that calibration without the marker visible.  A visible
+    # marker that disagrees with the stored scale triggers recalibration.
+    station_mode: bool = False
+    station_id: str | None = None
 
 
 @dataclass
@@ -68,6 +74,9 @@ class InferenceService:
     settings: InferenceSettings = field(default_factory=load_inference_settings)
     neural_model: Any = None
     identity_service: Any = None
+    # Fixed-camera station memory: calibrate once at commissioning, then grade
+    # every item without the marker needing to stay visible.
+    station_calibrations: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self._pipeline_version = "opencv-controlled-mat-0.2.0"
@@ -199,6 +208,14 @@ class InferenceService:
                 valid=False,
                 calibration_id="unavailable",
                 reasons=reasons,
+            )
+
+        station_key = request.station_id or (
+            context.device if context.device not in (None, "", "unknown") else None
+        )
+        if request.station_mode and station_key:
+            calibration = self._apply_station_calibration(
+                station_key, calibration, processing_bgr.shape[:2], warnings
             )
         timings["calibration_ms"] = (time.perf_counter() - marker_start) * 1000.0
         warnings.extend(calibration.warnings)
@@ -615,6 +632,50 @@ class InferenceService:
         if decision.status == Status.ACCEPTED:
             return Status.ACCEPTED, decision.size_class, list(decision.reasons)
         return decision.status, None, list(decision.reasons)
+
+    def _apply_station_calibration(
+        self,
+        station_key: str,
+        calibration: Calibration,
+        frame_shape: tuple[int, int],
+        warnings: list[str],
+    ) -> Calibration:
+        """Remember, reuse, and drift-check a fixed-camera station's scale.
+
+        Commissioning: the first frame with a valid calibration stores it.
+        Production frames: the stored scale is reused (same camera geometry)
+        when no marker is visible, so items can cover the marker freely.  A
+        visible marker that disagrees with the stored scale by more than 2%
+        means the camera or mat moved: the station recalibrates and says so.
+        """
+        cached = self.station_calibrations.get(station_key)
+        if calibration.valid:
+            if cached is not None and cached["calibration"].mm_per_px:
+                fresh = float(calibration.mm_per_px or 0.0)
+                stored = float(cached["calibration"].mm_per_px)
+                if fresh > 0 and abs(fresh - stored) / stored > 0.02:
+                    warnings.append(
+                        "STATION_CALIBRATION_DRIFT: the visible marker disagrees "
+                        "with the stored station scale by more than 2% (camera or "
+                        "mat moved). The station calibration was updated."
+                    )
+            self.station_calibrations[station_key] = {
+                "calibration": replace(calibration),
+                "shape": tuple(frame_shape),
+            }
+            return calibration
+        if cached is None or tuple(cached["shape"]) != tuple(frame_shape):
+            return calibration
+        reused = replace(cached["calibration"])
+        reused.warnings = list(reused.warnings) + [
+            "STATION_CALIBRATION_REUSED: scale comes from this fixed camera's "
+            "stored calibration (marker not visible in this frame). Commission "
+            "with the marker visible periodically to re-verify."
+        ]
+        warnings.append(
+            "Using stored station calibration; the marker was not visible."
+        )
+        return reused
 
     def _cross_check_species(
         self, frame: np.ndarray, crop_key: str

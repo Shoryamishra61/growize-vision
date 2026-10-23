@@ -26,13 +26,16 @@ OUTPUT_DIR = ROOT / "outputs"
 
 # The deployed app grades against PUBLISHED_REFERENCE crop policies (sourced
 # from standards, trade practice, and research data - docs/SIZE_REFERENCE_SOURCES.md).
-# Every accepted decision carries that disclaimer; nothing is presented as an
-# ARL/AGMARK approval.
+# Crop identity is auto-detected by the classifier when possible; it abstains
+# below its confidence floor and the operator's explicit crop always wins.
 CROP_CHOICES = {
     policy.crop_name: policy.crop_key
     for policy in (SERVICE.policies.policy(key) for key in SERVICE.policies.crop_keys)
     if policy.threshold_mm is not None
 }
+AUTO_CROP_CHOICE = "Auto-detect (single item)"
+CROP_UI_CHOICES = [AUTO_CROP_CHOICE] + list(CROP_CHOICES.keys())
+STATION_ID = "default-station"
 REFERENCE_PRESETS = {
     "Custom length (type below)": None,
     "Ruler marked 100 mm": 100.0,
@@ -127,10 +130,10 @@ def present_result(result, session=None):
     return image, result_html(title, message)
 
 
-def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty):
+def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm, ref_uncertainty, station_mode):
     if not path:
         return None, result_html("Image needed", "Upload or paste an image first.")
-    crop_key = CROP_CHOICES.get(crop_name or "")
+    crop_key = "auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or "")
     if crop_key is None:
         return None, result_html(
             "Crop needed", "Choose which vegetable is in the image; grades are crop-specific."
@@ -155,6 +158,8 @@ def inspect_image_ui(path, crop_name, marker_side_mm, ref_points, ref_length_mm,
         reference_points_px=reference,
         reference_length_mm=length if reference else None,
         reference_uncertainty_mm=uncertainty,
+        station_mode=bool(station_mode),
+        station_id=STATION_ID if station_mode else None,
     )
     try:
         decoded = load_image_file(
@@ -202,7 +207,7 @@ def _reference_points_html(points):
     )
 
 
-def live_inspect_ui(frame, session, crop_name):
+def live_inspect_ui(frame, session, crop_name, station_mode):
     session = session or LiveSession()
     if frame is None:
         session.invalidate_current_frame()
@@ -211,7 +216,11 @@ def live_inspect_ui(frame, session, crop_name):
             result_html("Camera idle", "Start the camera and allow browser access."),
             session,
         )
-    request = InferenceRequest(crop_key=CROP_CHOICES.get(crop_name or ""))
+    request = InferenceRequest(
+        crop_key="auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or ""),
+        station_mode=bool(station_mode),
+        station_id="camera-station" if station_mode else None,
+    )
     try:
         result = SERVICE.inspect_frame(
             rgb_to_bgr(frame), MediaContext(source_type=SourceType.WEBCAM), request
@@ -228,14 +237,18 @@ def live_inspect_ui(frame, session, crop_name):
         )
 
 
-def process_video_ui(path, crop_name, progress=gr.Progress()):
+def process_video_ui(path, crop_name, station_mode, progress=gr.Progress()):
     if not path:
         return None, result_html("Video needed", "Upload or record a video first.")
     try:
         report = process_video(
             path,
             service=SERVICE,
-            request=InferenceRequest(crop_key=CROP_CHOICES.get(crop_name or "")),
+            request=InferenceRequest(
+                crop_key="auto" if crop_name == AUTO_CROP_CHOICE else CROP_CHOICES.get(crop_name or ""),
+                station_mode=bool(station_mode),
+                station_id="video-station" if station_mode else None,
+            ),
             settings=SERVICE.settings,
             output_dir=OUTPUT_DIR,
             progress=lambda fraction, description: progress(fraction, desc=description),
@@ -328,18 +341,22 @@ def build_app():
                         )
                         with gr.Row():
                             crop = gr.Dropdown(
-                                choices=crop_choices,
-                                value=crop_choices[0] if crop_choices else None,
+                                choices=CROP_UI_CHOICES,
+                                value=AUTO_CROP_CHOICE,
                                 label="Crop",
                                 filterable=True,
                             )
                             marker_side = gr.Number(
-                                label="Printed marker side (mm) — optional",
+                                label="Printed marker side (mm) — measured once at station setup",
                                 value=None,
                                 minimum=5,
                                 maximum=1000,
                             )
-                        with gr.Accordion("Reference scale (no printed marker)", open=True):
+                        station_toggle = gr.Checkbox(
+                            value=True,
+                            label="Station mode (fixed camera): calibrate once with the marker visible, then items may cover it",
+                        )
+                        with gr.Accordion("One-off reference scale (no printed marker)", open=False):
                             ref_points_state = gr.State([])
                             ref_points_label = gr.HTML(_reference_points_html([]))
                             ref_preset = gr.Dropdown(
@@ -380,7 +397,7 @@ def build_app():
                 )
                 run.click(
                     inspect_image_ui,
-                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty],
+                    [source, crop, marker_side, ref_points_state, ref_length, ref_uncertainty, station_toggle],
                     [output, status],
                     concurrency_id="inspection",
                     concurrency_limit=1,
@@ -393,9 +410,13 @@ def build_app():
             with gr.Tab("Camera"):
                 session = gr.State(LiveSession())
                 camera_crop = gr.Dropdown(
-                    choices=crop_choices,
+                    choices=CROP_UI_CHOICES,
                     value=crop_choices[0] if crop_choices else None,
-                    label="Crop (marker-based grading)",
+                    label="Crop",
+                )
+                camera_station = gr.Checkbox(
+                    value=True,
+                    label="Station mode (fixed camera): calibrate once with the marker visible",
                 )
                 with gr.Row():
                     camera = gr.Image(
@@ -412,7 +433,7 @@ def build_app():
                         )
                 camera.stream(
                     live_inspect_ui,
-                    [camera, session, camera_crop],
+                    [camera, session, camera_crop, camera_station],
                     [camera_output, camera_status, session],
                     concurrency_id="inspection",
                     concurrency_limit=1,
@@ -430,9 +451,13 @@ def build_app():
                 )
             with gr.Tab("Video"):
                 video_crop = gr.Dropdown(
-                    choices=crop_choices,
+                    choices=CROP_UI_CHOICES,
                     value=crop_choices[0] if crop_choices else None,
-                    label="Crop (marker-based grading)",
+                    label="Crop",
+                )
+                video_station = gr.Checkbox(
+                    value=True,
+                    label="Station mode (fixed camera): calibrate once with the marker visible",
                 )
                 with gr.Row():
                     with gr.Column():
@@ -445,7 +470,7 @@ def build_app():
                         )
                 video_run.click(
                     process_video_ui,
-                    [video, video_crop],
+                    [video, video_crop, video_station],
                     [replay, video_status],
                     concurrency_id="inspection",
                     concurrency_limit=1,
