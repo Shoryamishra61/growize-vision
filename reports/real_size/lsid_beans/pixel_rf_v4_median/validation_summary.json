@@ -1,0 +1,90 @@
+{
+  "scope": "Single-source bean-leaf area sizing; recorded crop identity, one capture per leaf; not universal produce grading.",
+  "split": "validation",
+  "checkpoint_sha256": "5bab598a910526043b1cb6cabe14d92852b738539f42e56d199c0906cd2e3c05",
+  "script_sha256": "82180007421d75f6b4a9e0f21e3a2d67f1d9a5515972f185262b8f4bfe27f80a",
+  "acquisition_sha256": "c28734b39bb325f0d0b306203b5453cb15f9772e19344f51f48a8378dd85d599",
+  "split_sha256": "d39949b34028d0e3befb6a13ccb2463382b5a5e3e54bacb9f0497fbc49a9fdb4",
+  "reference_mean_cm2": 25.451243842364534,
+  "reference_threshold_cm2": 24.933,
+  "reference_statistic": "median",
+  "reference_distribution_cm2": {
+    "mean": 25.451243842364534,
+    "median": 24.933,
+    "small_group_median": 21.733,
+    "big_group_median": 28.2,
+    "small_specimens": 200,
+    "big_specimens": 206,
+    "minimum": 15.333,
+    "maximum": 39.733,
+    "sample_standard_deviation": 4.8291610520172155,
+    "boundary_rule": "SMALL < median; BIG >= median; ties belong to BIG"
+  },
+  "measurement_method": "marker_area_scalar",
+  "training_leaves": 406,
+  "automatic": {
+    "captures": 84,
+    "accepted": 37,
+    "correct": 34,
+    "accepted_coverage": 0.44047619047619047,
+    "accepted_accuracy": 0.918918918918919,
+    "correct_fraction_all_captures": 0.40476190476190477,
+    "measured_captures": 64,
+    "measurement_mae_cm2": 2.49078125,
+    "engineering_bound_truth_coverage": 0.609375,
+    "confusion": {
+      "SMALL->REFUSED": 24,
+      "SMALL->SMALL": 20,
+      "SMALL->BIG": 1,
+      "BIG->BIG": 14,
+      "BIG->REFUSED": 23,
+      "BIG->SMALL": 2
+    },
+    "statuses": {
+      "NO_COMPLETE_LEAF": 13,
+      "ACCEPTED": 37,
+      "CALIBRATION_REQUIRED": 7,
+      "REVIEW_BORDERLINE": 27
+    }
+  },
+  "oracle_mask_diagnostic_not_automatic": {
+    "captures": 84,
+    "accepted": 46,
+    "correct": 44,
+    "accepted_coverage": 0.5476190476190477,
+    "accepted_accuracy": 0.9565217391304348,
+    "correct_fraction_all_captures": 0.5238095238095238,
+    "measured_captures": 74,
+    "measurement_mae_cm2": 2.5908513513513514,
+    "engineering_bound_truth_coverage": 0.5405405405405406,
+    "confusion": {
+      "SMALL->SMALL": 22,
+      "SMALL->REFUSED": 22,
+      "SMALL->BIG": 1,
+      "BIG->BIG": 22,
+      "BIG->REFUSED": 16,
+      "BIG->SMALL": 1
+    },
+    "statuses": {
+      "ACCEPTED": 46,
+      "CALIBRATION_REQUIRED": 7,
+      "REVIEW_BORDERLINE": 28,
+      "OCCLUDED_MARKER": 3
+    }
+  },
+  "mask_iou_mean": 0.8059072458979424,
+  "existing_controlled_mat_statuses": {
+    "OUT_OF_DISTRIBUTION": 77,
+    "CALIBRATION_REQUIRED": 7
+  },
+  "median_processing_ms": 222.94770000007702,
+  "deployment_decision": "RESEARCH_ONLY_NOT_PROMOTED",
+  "limitations": [
+    "No automatic species identification or cross-crop validation.",
+    "Source frames were cropped/resized by their authors, not digitally augmented here.",
+    "Engineering uncertainty bounds are not statistical coverage guarantees.",
+    "One development pilot (leaf 001) was inspected; exclude its plant for a clean test summary.",
+    "Source test was previously observed during V3 development; V4 test results are post-test diagnostics, not a new independent test.",
+    "Mean-based and median-based scores have different target labels; score changes alone do not demonstrate a better measurement model."
+  ]
+}

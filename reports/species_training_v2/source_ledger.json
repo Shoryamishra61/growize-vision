@@ -1,0 +1,560 @@
+[
+  {
+    "id": "kaggle_veg",
+    "metadata": {
+      "subtitleNullable": "Vegetable classification and recognition",
+      "creatorNameNullable": "M Israk Ahmed",
+      "creatorUrlNullable": "misrakahmed",
+      "totalBytesNullable": 560031432,
+      "urlNullable": "https://www.kaggle.com/datasets/misrakahmed/vegetable-image-dataset",
+      "licenseNameNullable": "CC BY-SA 4.0",
+      "ownerNameNullable": "M Israk Ahmed",
+      "ownerRefNullable": "misrakahmed",
+      "titleNullable": "Vegetable Image Dataset",
+      "currentVersionNumberNullable": 1,
+      "usabilityRatingNullable": 0.75,
+      "thumbnailImageUrlNullable": "https://storage.googleapis.com/kaggle-datasets-images/1817999/2965251/5ceb231719e883bae6d6adfe3d0b76e4/dataset-thumbnail.png?t=2021-12-24-13-44-56",
+      "id": 1817999,
+      "ref": "misrakahmed/vegetable-image-dataset",
+      "subtitle": "Vegetable classification and recognition",
+      "hasSubtitle": true,
+      "creatorName": "M Israk Ahmed",
+      "hasCreatorName": true,
+      "creatorUrl": "misrakahmed",
+      "hasCreatorUrl": true,
+      "totalBytes": 560031432,
+      "hasTotalBytes": true,
+      "url": "https://www.kaggle.com/datasets/misrakahmed/vegetable-image-dataset",
+      "hasUrl": true,
+      "lastUpdated": "2021-12-24T13:24:40.333Z",
+      "downloadCount": 45143,
+      "isPrivate": false,
+      "isFeatured": false,
+      "licenseName": "CC BY-SA 4.0",
+      "hasLicenseName": true,
+      "description": "",
+      "hasDescription": false,
+      "ownerName": "M Israk Ahmed",
+      "hasOwnerName": true,
+      "ownerRef": "misrakahmed",
+      "hasOwnerRef": true,
+      "kernelCount": 356,
+      "title": "Vegetable Image Dataset",
+      "hasTitle": true,
+      "topicCount": 0,
+      "viewCount": 169624,
+      "voteCount": 279,
+      "currentVersionNumber": 1,
+      "hasCurrentVersionNumber": true,
+      "usabilityRating": 0.75,
+      "hasUsabilityRating": true,
+      "tags": [
+        {
+          "nameNullable": "computer vision",
+          "descriptionNullable": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "fullPathNullable": "technique > computer vision",
+          "ref": "computer vision",
+          "name": "computer vision",
+          "hasName": true,
+          "description": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "hasDescription": true,
+          "fullPath": "technique > computer vision",
+          "hasFullPath": true,
+          "competitionCount": 160,
+          "datasetCount": 8005,
+          "scriptCount": 6591,
+          "totalCount": 14756
+        },
+        {
+          "nameNullable": "cnn",
+          "fullPathNullable": "technique > neural networks > cnn",
+          "ref": "cnn",
+          "name": "cnn",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "technique > neural networks > cnn",
+          "hasFullPath": true,
+          "competitionCount": 14,
+          "datasetCount": 1691,
+          "scriptCount": 7212,
+          "totalCount": 8917
+        },
+        {
+          "nameNullable": "image",
+          "fullPathNullable": "data type > image",
+          "ref": "image",
+          "name": "image",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "data type > image",
+          "hasFullPath": true,
+          "competitionCount": 719,
+          "datasetCount": 63476,
+          "scriptCount": 7146,
+          "totalCount": 71341
+        },
+        {
+          "nameNullable": "multiclass classification",
+          "fullPathNullable": "task > multiclass classification",
+          "ref": "multiclass classification",
+          "name": "multiclass classification",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "task > multiclass classification",
+          "hasFullPath": true,
+          "competitionCount": 1082,
+          "datasetCount": 1868,
+          "scriptCount": 4172,
+          "totalCount": 7122
+        },
+        {
+          "nameNullable": "food",
+          "fullPathNullable": "subject > health and fitness > food",
+          "ref": "food",
+          "name": "food",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "subject > health and fitness > food",
+          "hasFullPath": true,
+          "competitionCount": 15,
+          "datasetCount": 13451,
+          "scriptCount": 820,
+          "totalCount": 14286
+        }
+      ],
+      "files": [],
+      "versions": [],
+      "thumbnailImageUrl": "https://storage.googleapis.com/kaggle-datasets-images/1817999/2965251/5ceb231719e883bae6d6adfe3d0b76e4/dataset-thumbnail.png?t=2021-12-24-13-44-56",
+      "hasThumbnailImageUrl": true
+    },
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "inventory_sha256": "93b10ae1df290d5d5909ac170e38985235e90e3543aa9e714006b53f1b18e5e5"
+  },
+  {
+    "id": "j33g3nsm9k_v1",
+    "metadata": {
+      "id": "j33g3nsm9k",
+      "doi": {
+        "id": "10.17632/j33g3nsm9k.1",
+        "status": "allocated",
+        "prefix": "10.17632"
+      },
+      "name": "Vegetables Image Dataset for Machine Applications ",
+      "description": "We developed the Vegetable Image Dataset to offer a collection of high-quality images featuring some of the most widely consumed and traded vegetables around the Pune. The dataset includes six types of vegetables: potato, chili, tomato, cucumber, beans, and okra. Each vegetable is further categorized into subclasses \u2014 potatoes are divided into three size-based classes (large, medium, and small)  , while the other vegetables have two distinct varieties each (e.g., Chilies: Sitara, Jipoor, and Jwala; Tomatoes: Regular and Gaavran; Cucumbers: Regular and Gaavran; Beans: Long and Short; Okra: Long and Short) . This results in a total of 13 unique classes within the dataset . The images were taken under various lighting conditions \u2014 both natural and artificial \u2014 and against White backgrounds, including white,  to ensure diversity and realism in the visual context. Given that the visual appearance of vegetables plays a significant role in their market value, this dataset supports research that evaluates vegetable quality through visual inspection . Although there are numerous datasets available for fruits and vegetables, many machine learning projects and applications still require a vegetable-specific dataset due to the unique nutritional importance and visual characteristics of vegetables . A robust dataset like this one enables machine learning models to achieve high accuracy in tasks such as classification and recognition . It's particularly useful for applications in research, education, and agriculture, including areas like detecting pest damage or monitoring quality degradation .",
+      "version": 1,
+      "contributors": [
+        {
+          "institution": {
+            "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+            "name": "Vishwakarma Institute of Information Technology"
+          },
+          "contribution": "Implementation ",
+          "first_name": "Tanishka ",
+          "last_name": "Gaidhankar"
+        },
+        {
+          "institution": {
+            "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+            "name": "Vishwakarma Institute of Information Technology"
+          },
+          "contribution": "Implementation ",
+          "profile_id": "ce9d4337-b784-4eef-9f59-c32e415edebf",
+          "first_name": "Darshan ",
+          "last_name": "Girase"
+        },
+        {
+          "institution": {
+            "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+            "name": "Vishwakarma Institute of Information Technology"
+          },
+          "contribution": "Documentation ",
+          "first_name": "Yash",
+          "last_name": "Jogdand"
+        },
+        {
+          "institution": {
+            "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+            "name": "Vishwakarma Institute of Information Technology"
+          },
+          "contribution": "Mentor",
+          "profile_id": "9d40a850-461d-4811-ab5a-54f3a636cdab",
+          "first_name": "Pranali",
+          "last_name": "Mrs.Pranali Gajanan Chavhan"
+        },
+        {
+          "institution": {
+            "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+            "name": "Vishwakarma Institute of Information Technology"
+          },
+          "contribution": "Conceptualisation ",
+          "first_name": "Vijayshri",
+          "last_name": "Khedkar"
+        }
+      ],
+      "versions": [
+        {
+          "version": 3,
+          "available": true,
+          "publish_date": "2025-05-27T14:42:09.955Z"
+        },
+        {
+          "version": 2,
+          "available": true,
+          "publish_date": "2025-05-23T21:42:04.182Z"
+        },
+        {
+          "version": 1,
+          "available": true,
+          "publish_date": "2025-05-22T18:13:16.613Z"
+        }
+      ],
+      "articles": [],
+      "categories": [
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-189720754",
+          "label": "Computer Vision"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-249523402",
+          "label": "Machine Learning"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-253056321",
+          "label": "Classification System"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-257940622",
+          "label": "Fresh Vegetable"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-257940626",
+          "label": "Potato"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-264728555",
+          "label": "Cucumber"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-264728575",
+          "label": "Tomato"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-264728675",
+          "label": "Okra"
+        },
+        {
+          "id": "data.elsevier.com/vocabulary/OmniScience/Concept-442095486",
+          "label": "Deep Learning"
+        }
+      ],
+      "institutions": [
+        {
+          "id": "a8ec14f2-a7c3-5ddc-aee0-4c33ea7fc5cb",
+          "name": "Vishwakarma Institute of Information Technology"
+        }
+      ],
+      "available": true,
+      "size": 0,
+      "owner": {
+        "profile_id": "72dfaa85-5e48-4de0-8a3f-7f063c45e3c4",
+        "first_name": "Tanishka",
+        "last_name": "Gaidhankar"
+      },
+      "channel": "WEB",
+      "owner_id": "72dfaa85-5e48-4de0-8a3f-7f063c45e3c4",
+      "publish_date": "2025-05-22T18:13:16.613Z",
+      "data_licence": {
+        "id": "01d9c749-3c4d-4431-9df3-620b2dcfe144",
+        "description": "You can share, copy and modify this dataset so long as you give appropriate credit, provide a link to the CC BY license, and indicate if changes were made, but you may not do so in a way that suggests the rights holder has endorsed you or your use of the dataset. Note that further permission may be required for any content within the dataset that is identified as belonging to a third party.",
+        "url": "http://creativecommons.org/licenses/by/4.0",
+        "category": "Creative",
+        "short_name": "CC BY 4.0",
+        "full_name": "Creative Commons Attribution 4.0 International"
+      },
+      "related_links": [],
+      "funders": [],
+      "customer_id": "7377952c-6404-4428-bbfc-77242cfc301e",
+      "modified_on": "2025-05-22T16:11:52.725Z",
+      "created_on": "2025-05-19T11:35:11.053Z",
+      "confidential": false,
+      "links": {
+        "view": "https://data.mendeley.com/datasets/j33g3nsm9k"
+      },
+      "repository": {
+        "id": "MENDELEY_DATA",
+        "name": "Mendeley Data"
+      }
+    },
+    "archive_sha256": "d8cd57204d7c6e7f2098fa3a9314f050bbfdc144f5a229ddddd55f61f1bae865"
+  },
+  {
+    "id": "kritikseth_spinach",
+    "metadata": {
+      "subtitleNullable": "Fruit and Vegetable Images for Object Recognition",
+      "creatorNameNullable": "Kritik Seth",
+      "creatorUrlNullable": "kritikseth",
+      "totalBytesNullable": 2130757290,
+      "urlNullable": "https://www.kaggle.com/datasets/kritikseth/fruit-and-vegetable-image-recognition",
+      "licenseNameNullable": "CC0: Public Domain",
+      "ownerNameNullable": "Kritik Seth",
+      "ownerRefNullable": "kritikseth",
+      "titleNullable": "Fruits and Vegetables Image Recognition Dataset",
+      "currentVersionNumberNullable": 8,
+      "usabilityRatingNullable": 0.875,
+      "thumbnailImageUrlNullable": "https://storage.googleapis.com/kaggle-datasets-images/952827/1613819/d6088a240b65b74c5b8fa735958b08c5/dataset-thumbnail.jpg?t=2020-11-03-05-53-42",
+      "id": 952827,
+      "ref": "kritikseth/fruit-and-vegetable-image-recognition",
+      "subtitle": "Fruit and Vegetable Images for Object Recognition",
+      "hasSubtitle": true,
+      "creatorName": "Kritik Seth",
+      "hasCreatorName": true,
+      "creatorUrl": "kritikseth",
+      "hasCreatorUrl": true,
+      "totalBytes": 2130757290,
+      "hasTotalBytes": true,
+      "url": "https://www.kaggle.com/datasets/kritikseth/fruit-and-vegetable-image-recognition",
+      "hasUrl": true,
+      "lastUpdated": "2022-02-12T06:15:55.417Z",
+      "downloadCount": 68434,
+      "isPrivate": false,
+      "isFeatured": false,
+      "licenseName": "CC0: Public Domain",
+      "hasLicenseName": true,
+      "description": "",
+      "hasDescription": false,
+      "ownerName": "Kritik Seth",
+      "hasOwnerName": true,
+      "ownerRef": "kritikseth",
+      "hasOwnerRef": true,
+      "kernelCount": 289,
+      "title": "Fruits and Vegetables Image Recognition Dataset",
+      "hasTitle": true,
+      "topicCount": 0,
+      "viewCount": 314804,
+      "voteCount": 545,
+      "currentVersionNumber": 8,
+      "hasCurrentVersionNumber": true,
+      "usabilityRating": 0.875,
+      "hasUsabilityRating": true,
+      "tags": [
+        {
+          "nameNullable": "computer vision",
+          "descriptionNullable": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "fullPathNullable": "technique > computer vision",
+          "ref": "computer vision",
+          "name": "computer vision",
+          "hasName": true,
+          "description": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "hasDescription": true,
+          "fullPath": "technique > computer vision",
+          "hasFullPath": true,
+          "competitionCount": 160,
+          "datasetCount": 8005,
+          "scriptCount": 6591,
+          "totalCount": 14756
+        },
+        {
+          "nameNullable": "image",
+          "fullPathNullable": "data type > image",
+          "ref": "image",
+          "name": "image",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "data type > image",
+          "hasFullPath": true,
+          "competitionCount": 719,
+          "datasetCount": 63488,
+          "scriptCount": 7146,
+          "totalCount": 71353
+        },
+        {
+          "nameNullable": "multiclass classification",
+          "fullPathNullable": "task > multiclass classification",
+          "ref": "multiclass classification",
+          "name": "multiclass classification",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "task > multiclass classification",
+          "hasFullPath": true,
+          "competitionCount": 1082,
+          "datasetCount": 1868,
+          "scriptCount": 4171,
+          "totalCount": 7121
+        },
+        {
+          "nameNullable": "cooking and recipes",
+          "fullPathNullable": "subject > health and fitness > food > cooking and recipes",
+          "ref": "cooking and recipes",
+          "name": "cooking and recipes",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "subject > health and fitness > food > cooking and recipes",
+          "hasFullPath": true,
+          "competitionCount": 1,
+          "datasetCount": 2447,
+          "scriptCount": 203,
+          "totalCount": 2651
+        },
+        {
+          "nameNullable": "food",
+          "fullPathNullable": "subject > health and fitness > food",
+          "ref": "food",
+          "name": "food",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "subject > health and fitness > food",
+          "hasFullPath": true,
+          "competitionCount": 15,
+          "datasetCount": 13450,
+          "scriptCount": 820,
+          "totalCount": 14285
+        }
+      ],
+      "files": [],
+      "versions": [],
+      "thumbnailImageUrl": "https://storage.googleapis.com/kaggle-datasets-images/952827/1613819/d6088a240b65b74c5b8fa735958b08c5/dataset-thumbnail.jpg?t=2020-11-03-05-53-42",
+      "hasThumbnailImageUrl": true
+    }
+  },
+  {
+    "id": "kritikseth_onion",
+    "metadata": {
+      "subtitleNullable": "Fruit and Vegetable Images for Object Recognition",
+      "creatorNameNullable": "Kritik Seth",
+      "creatorUrlNullable": "kritikseth",
+      "totalBytesNullable": 2130757290,
+      "urlNullable": "https://www.kaggle.com/datasets/kritikseth/fruit-and-vegetable-image-recognition",
+      "licenseNameNullable": "CC0: Public Domain",
+      "ownerNameNullable": "Kritik Seth",
+      "ownerRefNullable": "kritikseth",
+      "titleNullable": "Fruits and Vegetables Image Recognition Dataset",
+      "currentVersionNumberNullable": 8,
+      "usabilityRatingNullable": 0.875,
+      "thumbnailImageUrlNullable": "https://storage.googleapis.com/kaggle-datasets-images/952827/1613819/d6088a240b65b74c5b8fa735958b08c5/dataset-thumbnail.jpg?t=2020-11-03-05-53-42",
+      "id": 952827,
+      "ref": "kritikseth/fruit-and-vegetable-image-recognition",
+      "subtitle": "Fruit and Vegetable Images for Object Recognition",
+      "hasSubtitle": true,
+      "creatorName": "Kritik Seth",
+      "hasCreatorName": true,
+      "creatorUrl": "kritikseth",
+      "hasCreatorUrl": true,
+      "totalBytes": 2130757290,
+      "hasTotalBytes": true,
+      "url": "https://www.kaggle.com/datasets/kritikseth/fruit-and-vegetable-image-recognition",
+      "hasUrl": true,
+      "lastUpdated": "2022-02-12T06:15:55.417Z",
+      "downloadCount": 68434,
+      "isPrivate": false,
+      "isFeatured": false,
+      "licenseName": "CC0: Public Domain",
+      "hasLicenseName": true,
+      "description": "",
+      "hasDescription": false,
+      "ownerName": "Kritik Seth",
+      "hasOwnerName": true,
+      "ownerRef": "kritikseth",
+      "hasOwnerRef": true,
+      "kernelCount": 289,
+      "title": "Fruits and Vegetables Image Recognition Dataset",
+      "hasTitle": true,
+      "topicCount": 0,
+      "viewCount": 314804,
+      "voteCount": 545,
+      "currentVersionNumber": 8,
+      "hasCurrentVersionNumber": true,
+      "usabilityRating": 0.875,
+      "hasUsabilityRating": true,
+      "tags": [
+        {
+          "nameNullable": "computer vision",
+          "descriptionNullable": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "fullPathNullable": "technique > computer vision",
+          "ref": "computer vision",
+          "name": "computer vision",
+          "hasName": true,
+          "description": "Teaching a machine to interpret real-world images and videos. Applications include detecting objects, capturing motion, and restoring images.",
+          "hasDescription": true,
+          "fullPath": "technique > computer vision",
+          "hasFullPath": true,
+          "competitionCount": 160,
+          "datasetCount": 8005,
+          "scriptCount": 6591,
+          "totalCount": 14756
+        },
+        {
+          "nameNullable": "image",
+          "fullPathNullable": "data type > image",
+          "ref": "image",
+          "name": "image",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "data type > image",
+          "hasFullPath": true,
+          "competitionCount": 719,
+          "datasetCount": 63476,
+          "scriptCount": 7146,
+          "totalCount": 71341
+        },
+        {
+          "nameNullable": "multiclass classification",
+          "fullPathNullable": "task > multiclass classification",
+          "ref": "multiclass classification",
+          "name": "multiclass classification",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "task > multiclass classification",
+          "hasFullPath": true,
+          "competitionCount": 1082,
+          "datasetCount": 1868,
+          "scriptCount": 4171,
+          "totalCount": 7121
+        },
+        {
+          "nameNullable": "cooking and recipes",
+          "fullPathNullable": "subject > health and fitness > food > cooking and recipes",
+          "ref": "cooking and recipes",
+          "name": "cooking and recipes",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "subject > health and fitness > food > cooking and recipes",
+          "hasFullPath": true,
+          "competitionCount": 1,
+          "datasetCount": 2447,
+          "scriptCount": 203,
+          "totalCount": 2651
+        },
+        {
+          "nameNullable": "food",
+          "fullPathNullable": "subject > health and fitness > food",
+          "ref": "food",
+          "name": "food",
+          "hasName": true,
+          "description": "",
+          "hasDescription": false,
+          "fullPath": "subject > health and fitness > food",
+          "hasFullPath": true,
+          "competitionCount": 15,
+          "datasetCount": 13451,
+          "scriptCount": 820,
+          "totalCount": 14286
+        }
+      ],
+      "files": [],
+      "versions": [],
+      "thumbnailImageUrl": "https://storage.googleapis.com/kaggle-datasets-images/952827/1613819/d6088a240b65b74c5b8fa735958b08c5/dataset-thumbnail.jpg?t=2020-11-03-05-53-42",
+      "hasThumbnailImageUrl": true
+    }
+  }
+]

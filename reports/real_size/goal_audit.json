@@ -1,0 +1,83 @@
+{
+  "goal_complete": false,
+  "goal_blocker": "Missing independent, physically measured representative captures from the intended setup and other requested vegetable/leaf types; current real-only model fails size validation.",
+  "blocked_audit": {
+    "consecutive_goal_turns_with_same_physical_data_dependency": 3,
+    "turn1": "Simplified UI and established empty real station manifest; source composites excluded.",
+    "turn2": "Acquired independent bean-leaf research data and trained/rejected two candidates; intended station and other vegetable types still missing.",
+    "turn3": "Isolated measurement method, rejected a near-all-refusal workaround, froze and evaluated final candidate on held-out source data; actual-setup/cross-crop validation still missing.",
+    "why_an_external_change_is_needed": "More tuning on the now-observed source test would not establish independent reliability, physical coplanarity, other vegetable averages, or live-camera/video behavior in the intended setup. New original physical captures and independent measurements are required."
+  },
+  "requirements": [
+    {
+      "requirement": "Reliable SMALL/BIG physical grading on real vegetables and leaves",
+      "status": "CONTRADICTED_BY_HELD_OUT_RESULTS",
+      "evidence": "lsid_beans/pixel_rf_v3/test_summary.json",
+      "finding": "Clean held-out120 captures:67 accepted,62 correct,5 wrong;55.83% coverage. One bean-leaf source only."
+    },
+    {
+      "requirement": "Same-kind average size rule",
+      "status": "PARTIAL",
+      "evidence": "lsid_beans/pixel_rf_v3/candidate.pkl and experiment_plan.json",
+      "finding": "Training-only mean25.451243842364534cm2 for406 bean leaves. No independent measured references for the other requested vegetable/leaf types."
+    },
+    {
+      "requirement": "No synthetic training or image evaluation after the instruction",
+      "status": "VERIFIED_FOR_NEW_EXPERIMENTS",
+      "evidence": "lsid_beans/source_integrity.json and source acquisition manifest",
+      "finding": "612 unchanged published physical captures; no generated views or composites. Author crop/resize disclosed. Historical synthetic fixtures were not rerun."
+    },
+    {
+      "requirement": "Independent validation and held-out evidence",
+      "status": "VERIFIED_WITH_LIMITED_SCOPE",
+      "evidence": "lsid_beans/split_contract.json; pixel_rf_v3/validation_summary.json; pixel_rf_v3/test_summary.json",
+      "finding": "Plant-separated406/84/122 leaves. Test evaluated once after freezing; development pilot plant excluded from clean120-capture summary. This fold may not be reused for tuning and then called independent."
+    },
+    {
+      "requirement": "No invented scale, cutoffs, confidence or accuracy",
+      "status": "PARTIAL",
+      "evidence": "data/real_size/manifest.jsonl; apps/gradio_app.py; ui_audit.json",
+      "finding": "Active UI has no released model, no demo or appearance size and no configured crop/scale. The research scalar estimator is labelled approximate. Its61.22% engineering-bound truth coverage is inadequate for a size-model release."
+    },
+    {
+      "requirement": "Simple image/clipboard/camera/video input and output interface",
+      "status": "IMPLEMENTED_WITH_VERIFICATION_LIMITS",
+      "evidence": "apps/gradio_app.py; ui_checks.json; interface-unreleased-desktop.png",
+      "finding": "Three media tabs and output only. Image upload/clear, empty states, keyboard focus and target widths checked. Clipboard paste interaction and physical produce camera/video trials not verified."
+    },
+    {
+      "requirement": "Every vegetable type and plant/leaf scenario",
+      "status": "MISSING_EVIDENCE",
+      "evidence": "lsid_beans/current_state.json; external_validation_source.json",
+      "finding": "Only single-source bean-leaf size research evaluated. Broccoli RGB-D is a separate reserved source, not an ordinary-camera sizing result. Other produce lacks paired physical measurements from the intended setup."
+    },
+    {
+      "requirement": "Zero errors or universal100% accuracy",
+      "status": "NOT_ACHIEVED",
+      "evidence": "lsid_beans/pixel_rf_v3/test_predictions.jsonl; uncertainty_feasibility.json",
+      "finding": "Five wrong accepted held-out decisions. Inflating validation bounds to leave only2/84 labels was rejected as a complete solution. A finite dataset cannot prove universal100% accuracy."
+    },
+    {
+      "requirement": "Runnable checks and honest local artifacts",
+      "status": "VERIFIED_FOR_REPORTED_SCOPE",
+      "evidence": "tests/test_real_photo_contract.py; tests/test_lsid_real_marker.py; STATUS.md",
+      "finding": "62 focused tests passed. Ruff checks passed on changed engineering sources. Synthetic full-suite, physical field qualification and public model deployment are not claimed."
+    }
+  ],
+  "live_training_or_evaluation_job": null,
+  "model_promoted": false,
+  "unblocking_input_file": "REQUIRED_CAPTURE_DATA.md",
+  "latest_followup": {
+    "request": "Industrial potato sizing research and median-based real-data pipeline rerun",
+    "status": "EXECUTED_RESEARCH_MODEL_NOT_RELEASED",
+    "evidence": [
+      "INDUSTRIAL_SIZING_RESEARCH.md",
+      "lsid_beans/pixel_rf_v4_median/validation_summary.json",
+      "lsid_beans/pixel_rf_v4_median/test_summary.json"
+    ],
+    "tests_passed": 71,
+    "validation_wrong_accepted": 3,
+    "post_test_diagnostic_wrong_accepted": 7,
+    "scope": "Bean-leaf sizing only; source test previously observed; no all-vegetable qualification"
+  }
+}

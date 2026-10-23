@@ -1,0 +1,36 @@
+{
+  "experiment": "LSID_REAL_SIZE_004_MEDIAN",
+  "status": "PLANNED",
+  "source_version": 3,
+  "source": "https://data.mendeley.com/datasets/f42hwwrpgn/3",
+  "source_paper": "https://doi.org/10.1016/j.dib.2025.111328",
+  "split_sha256": "d39949b34028d0e3befb6a13ccb2463382b5a5e3e54bacb9f0497fbc49a9fdb4",
+  "target": "Single bean leaf area below training median is SMALL; at or above is BIG. Lower and upper class medians are descriptive anchors only.",
+  "original_image_policy": "One actual published camera capture per leaf; no generated views, composites or augmentation. Source publisher crop/resize to 512x512 retained without adding transformed views.",
+  "baseline": "Existing controlled-mat inference, with the published custom marker family enabled; safety gates unchanged.",
+  "diagnostic": "Oracle annotated leaf mask plus detected physical marker, separately labelled as a geometric ceiling. Never reported as automatic size accuracy.",
+  "candidate": "Unchanged dominant-component pixel RF. Marker-area scalar weak-perspective area estimate; explicitly approximate, never a validated physical plane claim.",
+  "candidate_parameters": {
+    "trees": 30,
+    "max_depth": 14,
+    "min_samples_leaf": 10,
+    "random_state": 42,
+    "workers": 4,
+    "training_pixels_per_capture": 1000,
+    "probability_threshold": 0.5
+  },
+  "selection": "User-specified median definition, not selected by evaluation performance. Source test outcomes were already observed during V3; any test rerun is a post-test diagnostic.",
+  "pilot_inspection": "Leaf 001 image, XML and oracle geometry were inspected for format/marker compatibility. Report this development pilot separately from clean held-out results.",
+  "known_scope_limits": [
+    "One bean-leaf crop and one source camera/geography.",
+    "Not automatic species identification, every vegetable, or physical station field qualification.",
+    "Leaf non-planarity and manual measurement error can limit physical-size decisions."
+  ],
+  "single_change": "Use the measured training-specimen median instead of mean; identical random forest, physical scaling, guard band and split.",
+  "measurement_method": "marker_area_scalar",
+  "reference_statistic": "median",
+  "additional_limitations": [
+    "Source test was previously observed during V3 development; V4 test results are post-test diagnostics, not a new independent test.",
+    "Mean-based and median-based scores have different target labels; score changes alone do not demonstrate a better measurement model."
+  ]
+}

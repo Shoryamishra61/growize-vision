@@ -1,0 +1,42 @@
+{
+  "source_sha256": {
+    "src\\growize_vision\\__init__.py": "ed62ce2e93c02011ac93ecfcd82369285ef0bf2f801a9eb4f203185b0f26d3e6",
+    "src\\growize_vision\\config.py": "efba8843ad1d61f38e0cffffc348af72c54450fc645cd55ba2d658e39c458738",
+    "src\\growize_vision\\crop_identity.py": "0908bc1b1cd4071cfd669f22eee5695ae20f25683c570d290d0cdca85a37ac87",
+    "src\\growize_vision\\crop_references.py": "a9f9eeb3298730d486d7e2d466751b42ba729a1217c862c1133087c2ebb4787e",
+    "src\\growize_vision\\dataset.py": "41f0ca91d5b92bd761a2342f81883541af7f2e8ba3382e386875be21d6471cfe",
+    "src\\growize_vision\\domain.py": "054a13258eeec2a5551b5cb760b1fa816f82728ff1e1645fc2974298a1681d8b",
+    "src\\growize_vision\\evidence.py": "5324b78f3b6758f3e0a9c9a653a176ba14fb36f30fafa6fb24e23355a78a85a4",
+    "src\\growize_vision\\exports.py": "00ee9d51279a1641381d898e72477745d43eb299a6de6f44afe09111193e5db7",
+    "src\\growize_vision\\geometry.py": "ec0d7f8d3a085a26ea01820c2202eeb258aacf485727e1ac101c6b84043af83d",
+    "src\\growize_vision\\grading.py": "b2f46bff6e4786564849aa9381c585dd3e6e82bbf3d11aabc46525fc2de9ca5b",
+    "src\\growize_vision\\inference.py": "100934f3aec27e0bf0d3a042138322bb38df0f81cc541aa96b8bd879156191cc",
+    "src\\growize_vision\\markers.py": "4883a131e972c3d428e999f839b60c04c128da9d7561717898fe7f8d72352275",
+    "src\\growize_vision\\media.py": "de10ad0b518358fc6dfd404bbcf9ab7f830bdd85d86af6b10a8113686776bc79",
+    "src\\growize_vision\\quality.py": "0c0dbd0c77240ab4f02bc454730b31e95313c177d312eb4ebea4c9eb798843b2",
+    "src\\growize_vision\\real_photos.py": "bee83392ee58bc93d70599c953adb64eddd7269599084bbf849d35b7697baf36",
+    "src\\growize_vision\\rendering.py": "8e3742bfa0cd60d70935152aa5c8394ced9dc52e6042250b6e266af3dfe8c805",
+    "src\\growize_vision\\segmentation_cv.py": "9c948319da68455924cfda38493d41d75a3044be51e14c179c332f52b49cd8c8",
+    "src\\growize_vision\\segmentation_ml.py": "042ba538b9f3d51eee7745aab35af94cb2243d3c98f5872e3c105fc6cd7c03ff",
+    "src\\growize_vision\\telemetry.py": "a14dd8e1761e376f5e7181bdf9a798950c7e58f2691906e71607679d11c9c804",
+    "src\\growize_vision\\tracking.py": "6dccf401917af1ad382ad707d391c6a7704b4cdedace64e657d4457baceb701f",
+    "src\\growize_vision\\version.py": "d07459b66b4c6aab46f7bdec2510b9ded483453909762a570c46d1508d9cfa3b",
+    "src\\growize_vision\\video.py": "02b0027f65425dbb1137f08109928a2da78413873f02e74ea80cf82a2d6e4a26",
+    "config\\inference.yaml": "3f9c588de95359f30e75905456c0d6e6b15f312aa7e7cc5e60665f07acb4d6a0",
+    "config\\grade_rules.yaml": "65b92080f0cd9d8dfe8d98c90ef26b557e3898345d9d28a57f89f9c06210dec6",
+    "scripts/benchmark_lsid_size.py": "82180007421d75f6b4a9e0f21e3a2d67f1d9a5515972f185262b8f4bfe27f80a"
+  },
+  "python": "3.10.11",
+  "packages": {
+    "numpy": "2.2.6",
+    "scikit-learn": "1.7.2",
+    "Pillow": "10.4.0"
+  },
+  "opencv_module_version": "4.11.0",
+  "checkpoint_sha256": "5bab598a910526043b1cb6cabe14d92852b738539f42e56d199c0906cd2e3c05",
+  "measurement_parity_with_v3": {
+    "validation": true,
+    "test": true
+  },
+  "evaluation_note": "V4 test is post-test diagnostic; not independent model qualification."
+}

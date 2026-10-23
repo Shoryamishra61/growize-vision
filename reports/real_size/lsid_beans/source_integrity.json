@@ -1,0 +1,14 @@
+{
+  "actual_original_captures": 612,
+  "unique_measured_leaves": 612,
+  "unique_plants": 306,
+  "split_counts": {
+    "test": 122,
+    "train": 406,
+    "validation": 84
+  },
+  "decoded_failures": [],
+  "acquisition_sha256": "c28734b39bb325f0d0b306203b5453cb15f9772e19344f51f48a8378dd85d599",
+  "source_preprocessing": "Original physical camera captures cropped/resized to512 by source authors. No generated augmentation or composites.",
+  "role": "Real physical-size research; not automatic species recognition or universal vegetables."
+}

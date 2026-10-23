@@ -1,0 +1,99 @@
+{
+  "scope": "Single-source bean-leaf area sizing; recorded crop identity, one capture per leaf; not universal produce grading.",
+  "split": "test",
+  "checkpoint_sha256": "1b7b1101a422301b79a6020bb83bf2195d8510c4ab256109bdaaeeab9e9110a8",
+  "script_sha256": "8ec4ada3180ebf8e2895d07670a15bccffb23811a0eadf13fbf69ef1d864ec57",
+  "acquisition_sha256": "c28734b39bb325f0d0b306203b5453cb15f9772e19344f51f48a8378dd85d599",
+  "split_sha256": "d39949b34028d0e3befb6a13ccb2463382b5a5e3e54bacb9f0497fbc49a9fdb4",
+  "reference_mean_cm2": 25.451243842364534,
+  "measurement_method": "marker_area_scalar",
+  "training_leaves": 406,
+  "automatic": {
+    "captures": 122,
+    "accepted": 67,
+    "correct": 62,
+    "accepted_coverage": 0.5491803278688525,
+    "accepted_accuracy": 0.9253731343283582,
+    "correct_fraction_all_captures": 0.5081967213114754,
+    "measured_captures": 98,
+    "measurement_mae_cm2": 2.5821428571428573,
+    "engineering_bound_truth_coverage": 0.6122448979591837,
+    "confusion": {
+      "SMALL->REFUSED": 25,
+      "BIG->BIG": 22,
+      "BIG->REFUSED": 30,
+      "SMALL->SMALL": 40,
+      "SMALL->BIG": 2,
+      "BIG->SMALL": 3
+    },
+    "statuses": {
+      "NO_COMPLETE_LEAF": 16,
+      "ACCEPTED": 67,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 31
+    }
+  },
+  "oracle_mask_diagnostic_not_automatic": {
+    "captures": 122,
+    "accepted": 70,
+    "correct": 63,
+    "accepted_coverage": 0.5737704918032787,
+    "accepted_accuracy": 0.9,
+    "correct_fraction_all_captures": 0.5163934426229508,
+    "measured_captures": 106,
+    "measurement_mae_cm2": 2.4498962264150945,
+    "engineering_bound_truth_coverage": 0.5849056603773585,
+    "confusion": {
+      "SMALL->SMALL": 39,
+      "SMALL->BIG": 4,
+      "BIG->BIG": 24,
+      "BIG->SMALL": 3,
+      "BIG->REFUSED": 28,
+      "SMALL->REFUSED": 24
+    },
+    "statuses": {
+      "ACCEPTED": 70,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 36,
+      "OCCLUDED_MARKER": 8
+    }
+  },
+  "mask_iou_mean": 0.8404768162044229,
+  "existing_controlled_mat_statuses": {
+    "OUT_OF_DISTRIBUTION": 114,
+    "CALIBRATION_REQUIRED": 8
+  },
+  "median_processing_ms": 230.69370000303024,
+  "deployment_decision": "RESEARCH_ONLY_NOT_PROMOTED",
+  "limitations": [
+    "No automatic species identification or cross-crop validation.",
+    "Source frames were cropped/resized by their authors, not digitally augmented here.",
+    "Engineering uncertainty bounds are not statistical coverage guarantees.",
+    "One development pilot (leaf 001) was inspected; exclude its plant for a clean test summary."
+  ],
+  "clean_test_excluding_development_pilot_plant": {
+    "captures": 120,
+    "accepted": 67,
+    "correct": 62,
+    "accepted_coverage": 0.5583333333333333,
+    "accepted_accuracy": 0.9253731343283582,
+    "correct_fraction_all_captures": 0.5166666666666667,
+    "measured_captures": 98,
+    "measurement_mae_cm2": 2.5821428571428573,
+    "engineering_bound_truth_coverage": 0.6122448979591837,
+    "confusion": {
+      "BIG->BIG": 22,
+      "BIG->REFUSED": 30,
+      "SMALL->SMALL": 40,
+      "SMALL->REFUSED": 23,
+      "SMALL->BIG": 2,
+      "BIG->SMALL": 3
+    },
+    "statuses": {
+      "ACCEPTED": 67,
+      "NO_COMPLETE_LEAF": 14,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 31
+    }
+  }
+}

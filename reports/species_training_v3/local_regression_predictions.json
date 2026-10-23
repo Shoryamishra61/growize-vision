@@ -1,0 +1,31 @@
+{
+  "offline_load": true,
+  "confidence_floor": 0.975,
+  "evidence": "Diagnostic examples; not independent accuracy evidence",
+  "predictions": [
+    {
+      "path": "data/raw/white_bg_okra/user_okra_0.jpg",
+      "variant": "original",
+      "species": "Okra",
+      "confidence": 0.9779313697990384
+    },
+    {
+      "path": "data/raw/white_bg_okra/user_okra_0.jpg",
+      "variant": "text",
+      "species": "Okra",
+      "confidence": 0.9833398001736952
+    },
+    {
+      "path": "data/raw/cropped_okra_pods/crop_100_0.jpg",
+      "variant": "original",
+      "species": "Okra",
+      "confidence": 0.9999915698727626
+    },
+    {
+      "path": "data/raw/cropped_okra_pods/crop_100_0.jpg",
+      "variant": "text",
+      "species": "Okra",
+      "confidence": 0.9999697138836855
+    }
+  ]
+}

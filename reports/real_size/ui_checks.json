@@ -1,0 +1,35 @@
+{
+  "visual_thesis": "Plain inspection bench: input and output only.",
+  "signature_decisions": [
+    "Single restrained cream/forest palette with a ruled title.",
+    "Three media tabs, no species selector or policy dashboard.",
+    "One large textual result; refusal reasons accompany missing evidence."
+  ],
+  "viewports_checked_css_px": [
+    360,
+    768,
+    1024,
+    1440
+  ],
+  "horizontal_overflow_observed": false,
+  "keyboard_check": "Check size to Clear via Tab; visible focus outline confirmed.",
+  "image_checks": [
+    "real okra upload without scale -> Scale needed",
+    "empty upload -> Image needed",
+    "clear -> input/output empty and Ready"
+  ],
+  "camera_check": "Permission/idle state and Python callback invalidation; no live produce trial.",
+  "video_check": "Empty upload -> Video needed; no real produce replay trial.",
+  "clipboard": "Control present; image paste interaction not exercised.",
+  "contrast": "Computed image labels corrected to dark green on white; selected tab dark green with white text.",
+  "reduced_motion": "CSS disables animation and transitions under prefers-reduced-motion; OS setting not toggled.",
+  "console": "Earlier stopped-server connection errors were present in tab history; no clean-session blanket console pass claimed.",
+  "release_status": "UI simplification verified in these limited flows; model and physical size release blocked.",
+  "release_message": "Validation incomplete: SMALL/BIG grading is not released; capture inspection only.",
+  "release_message_viewports_checked": [
+    360,
+    1440
+  ],
+  "release_message_overflow": false,
+  "release_screenshot": "interface-unreleased-desktop.png"
+}

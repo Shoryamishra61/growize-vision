@@ -1,0 +1,110 @@
+{
+  "Bean": {
+    "count": 41,
+    "area_median": 5317.0,
+    "axis_median": 159.68011474609375,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Brinjal": {
+    "count": 24,
+    "area_median": 6051.0,
+    "axis_median": 101.31618881225586,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Broccoli": {
+    "count": 18,
+    "area_median": 16469.0,
+    "axis_median": 162.17505645751953,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Cabbage": {
+    "count": 15,
+    "area_median": 23159.0,
+    "axis_median": 180.6228790283203,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Capsicum": {
+    "count": 93,
+    "area_median": 18663.0,
+    "axis_median": 176.9676513671875,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Carrot": {
+    "count": 57,
+    "area_median": 6552.5,
+    "axis_median": 147.0,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Cucumber": {
+    "count": 42,
+    "area_median": 7534.0,
+    "axis_median": 148.12045288085938,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Potato": {
+    "count": 123,
+    "area_median": 10300.0,
+    "axis_median": 135.6762237548828,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Pumpkin": {
+    "count": 10,
+    "area_median": 16964.75,
+    "axis_median": 164.2543716430664,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Radish": {
+    "count": 24,
+    "area_median": 5459.25,
+    "axis_median": 188.46521759033203,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Tomato": {
+    "count": 33,
+    "area_median": 3369.0,
+    "axis_median": 85.0,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  },
+  "Onion": {
+    "count": 10,
+    "area_median": 16783.75,
+    "axis_median": 183.96570587158203,
+    "reference_size_px": 224,
+    "method": "controlled_background_v2",
+    "physical_truth": false,
+    "manifest_sha256": "fbc0499ea8adedf324a31ddbfbcbcf5cde1f671150676c37c2aa2eae5d2516c9"
+  }
+}

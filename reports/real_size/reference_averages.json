@@ -1,0 +1,11 @@
+{
+  "status": "BLOCKED",
+  "references": [],
+  "rule": "SMALL below the same-kind measured reference mean; BIG at or above it; refuse ambiguous measurements.",
+  "manifest_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "limitations": [
+    "Sample averages are not established population averages.",
+    "Independent original real-photo size validation is still required."
+  ],
+  "reason": "No reviewed, physically measured original training specimens supplied"
+}

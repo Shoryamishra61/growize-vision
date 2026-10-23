@@ -1,0 +1,13 @@
+{
+  "discovered": 72,
+  "approved": 57,
+  "excluded": 15,
+  "reviewer": "Codex visual review; no human annotator claimed",
+  "split_counts": {
+    "train": 39,
+    "validation": 10,
+    "test": 8
+  },
+  "group_unit": "source author profile (approximate independence only)",
+  "held_test_status": "NOT_OPENED_FOR_MODEL_INFERENCE"
+}

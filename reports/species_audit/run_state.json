@@ -1,0 +1,17 @@
+{
+  "status": "SIZE_FIRST_REAL_ORIGINAL_ONLY",
+  "active_training": null,
+  "active_model_in_minimal_ui": null,
+  "historical_candidates": "Not eligible as a real-original-only release; generated training views were used.",
+  "size_reference": "Measured training average for bean-leaf research only; no actual-setup/cross-crop release references.",
+  "physical_station_validation": "INCOMPLETE: needs independent measured actual-setup data.",
+  "external_benchmark": "Acquired 20 RGB-D image sets, 94 diameter annotations; validation-only; not run through sizing.",
+  "interface": "Simplified inputs plus output at localhost:7861.",
+  "remaining": [
+    "Measured station reference specimens and independent test specimens",
+    "Real-only automatic identity validation",
+    "Physical segmentation/measurement error evaluation",
+    "Real camera and video produce trial"
+  ],
+  "latest_real_size_result": "120 clean held-out leaves;67 accepted,62 correct,5 wrong; model rejected."
+}

@@ -1,0 +1,7 @@
+{
+  "status": "LOCAL_PILOT_CANDIDATE",
+  "checkpoint_sha256": "f68559ec924721acb8feb7386d122ea474f02367e818dc3a4a425a45c97d08cc",
+  "active_path": "config/models/species_classifier_v3.pkl",
+  "reason": "Correct taxonomy, grouped data, field-okra regression recovery, validation-selected abstention; no physical production claim",
+  "incumbent_preserved": "config/models/deep_vegetable_classifier.pkl"
+}

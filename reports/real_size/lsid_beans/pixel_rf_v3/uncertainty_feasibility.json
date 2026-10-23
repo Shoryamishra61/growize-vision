@@ -1,0 +1,31 @@
+{
+  "role": "Validation-only error-bound feasibility diagnostic; not independent evaluation or a formal coverage guarantee.",
+  "calibration_plants": 38,
+  "padding_max_cm2": 7.636999999999996,
+  "padding_95th_plant_cm2": 5.209999999999999,
+  "variants": [
+    {
+      "method": "maximum_observed_error",
+      "padding_cm2": 7.636999999999996,
+      "accepted": 2,
+      "total_validation_captures": 84,
+      "wrong": 0,
+      "accepted_classes": {
+        "SMALL": 1,
+        "BIG": 1
+      }
+    },
+    {
+      "method": "95th_plant_percentile",
+      "padding_cm2": 5.209999999999999,
+      "accepted": 9,
+      "total_validation_captures": 84,
+      "wrong": 0,
+      "accepted_classes": {
+        "SMALL": 7,
+        "BIG": 2
+      }
+    }
+  ],
+  "decision": "REJECT_UNCERTAINTY_PADDING_AS_A_COMPLETE_SOLUTION: apparent zero errors would come with unacceptably few labels and would not prove universal accuracy."
+}

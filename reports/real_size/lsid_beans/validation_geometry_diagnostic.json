@@ -1,0 +1,696 @@
+{
+  "scope": "Validation-only oracle-mask geometry diagnostic, not model accuracy",
+  "captures": 74,
+  "homography_mae_cm2": 4.290256756756756,
+  "scalar_mae_cm2": 2.5908122602797063,
+  "projective_scaling_slices": {
+    "0.05": {
+      "captures": 22,
+      "homography_mae_cm2": 2.5690454545454533
+    },
+    "0.1": {
+      "captures": 39,
+      "homography_mae_cm2": 2.485897435897435
+    },
+    "0.15": {
+      "captures": 48,
+      "homography_mae_cm2": 2.536479166666666
+    },
+    "0.2": {
+      "captures": 60,
+      "homography_mae_cm2": 2.860766666666666
+    },
+    "0.3": {
+      "captures": 69,
+      "homography_mae_cm2": 3.3865362318840573
+    }
+  },
+  "results": [
+    {
+      "leaf_id": 15,
+      "truth_cm2": 22.667,
+      "scalar_cm2": 15.83439799943307,
+      "projective_cm2": 18.919,
+      "projective_scalar_ratio": 1.1948038694415393,
+      "oracle_signed_error_cm2": -3.748000000000001,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 16,
+      "truth_cm2": 23.6,
+      "scalar_cm2": 20.647260353979956,
+      "projective_cm2": 23.053,
+      "projective_scalar_ratio": 1.1165161675096675,
+      "oracle_signed_error_cm2": -0.5470000000000006,
+      "automatic_mask_iou": 0.9778059606848446
+    },
+    {
+      "leaf_id": 21,
+      "truth_cm2": 16.533,
+      "scalar_cm2": 14.365200592155867,
+      "projective_cm2": 18.594,
+      "projective_scalar_ratio": 1.2943780270045986,
+      "oracle_signed_error_cm2": 2.061,
+      "automatic_mask_iou": 0.97984267453294
+    },
+    {
+      "leaf_id": 22,
+      "truth_cm2": 19.467,
+      "scalar_cm2": 18.691962942080877,
+      "projective_cm2": 20.914,
+      "projective_scalar_ratio": 1.1188766029980026,
+      "oracle_signed_error_cm2": 1.4470000000000027,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 36,
+      "truth_cm2": 18.133,
+      "scalar_cm2": 16.99562767489877,
+      "projective_cm2": 17.771,
+      "projective_scalar_ratio": 1.0456218705147557,
+      "oracle_signed_error_cm2": -0.3619999999999983,
+      "automatic_mask_iou": 0.9741699195219508
+    },
+    {
+      "leaf_id": 41,
+      "truth_cm2": 22.8,
+      "scalar_cm2": 18.008785216318344,
+      "projective_cm2": 20.796,
+      "projective_scalar_ratio": 1.1547697276746944,
+      "oracle_signed_error_cm2": -2.0040000000000013,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 42,
+      "truth_cm2": 21.733,
+      "scalar_cm2": 29.663156317278187,
+      "projective_cm2": 37.519,
+      "projective_scalar_ratio": 1.2648350566168827,
+      "oracle_signed_error_cm2": 15.785999999999998,
+      "automatic_mask_iou": 0.9780539132177573
+    },
+    {
+      "leaf_id": 58,
+      "truth_cm2": 23.067,
+      "scalar_cm2": 23.69372052574342,
+      "projective_cm2": 23.857,
+      "projective_scalar_ratio": 1.006891255177893,
+      "oracle_signed_error_cm2": 0.7899999999999991,
+      "automatic_mask_iou": 0.9695682365916425
+    },
+    {
+      "leaf_id": 73,
+      "truth_cm2": 24.533,
+      "scalar_cm2": 23.831243322683054,
+      "projective_cm2": 25.622,
+      "projective_scalar_ratio": 1.0751432333206243,
+      "oracle_signed_error_cm2": 1.0889999999999986,
+      "automatic_mask_iou": 0.9883486096007457
+    },
+    {
+      "leaf_id": 74,
+      "truth_cm2": 20.4,
+      "scalar_cm2": 25.883567448977146,
+      "projective_cm2": 26.156,
+      "projective_scalar_ratio": 1.0105253092163544,
+      "oracle_signed_error_cm2": 5.756,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 87,
+      "truth_cm2": 19.467,
+      "scalar_cm2": 20.73649664761886,
+      "projective_cm2": 21.002,
+      "projective_scalar_ratio": 1.0128036744534485,
+      "oracle_signed_error_cm2": 1.5350000000000001,
+      "automatic_mask_iou": 0.9514816844412596
+    },
+    {
+      "leaf_id": 88,
+      "truth_cm2": 22.933,
+      "scalar_cm2": 24.057820436611046,
+      "projective_cm2": 29.339,
+      "projective_scalar_ratio": 1.2195202835312582,
+      "oracle_signed_error_cm2": 6.405999999999999,
+      "automatic_mask_iou": 0.9726757966815908
+    },
+    {
+      "leaf_id": 123,
+      "truth_cm2": 32.8,
+      "scalar_cm2": 28.616461862833866,
+      "projective_cm2": 36.792,
+      "projective_scalar_ratio": 1.2856935345939555,
+      "oracle_signed_error_cm2": 3.9920000000000044,
+      "automatic_mask_iou": 0.98149412950857
+    },
+    {
+      "leaf_id": 124,
+      "truth_cm2": 34.267,
+      "scalar_cm2": 32.4458909993151,
+      "projective_cm2": 41.903,
+      "projective_scalar_ratio": 1.2914732408145158,
+      "oracle_signed_error_cm2": 7.635999999999996,
+      "automatic_mask_iou": 0.9805033450143358
+    },
+    {
+      "leaf_id": 127,
+      "truth_cm2": 27.867,
+      "scalar_cm2": 23.149990881449234,
+      "projective_cm2": 32.42,
+      "projective_scalar_ratio": 1.4004325170589633,
+      "oracle_signed_error_cm2": 4.553000000000001,
+      "automatic_mask_iou": 0.9726004036040133
+    },
+    {
+      "leaf_id": 128,
+      "truth_cm2": 22.533,
+      "scalar_cm2": 26.34908861996652,
+      "projective_cm2": 32.732,
+      "projective_scalar_ratio": 1.2422441046100057,
+      "oracle_signed_error_cm2": 10.198999999999998,
+      "automatic_mask_iou": 0.9305806638224022
+    },
+    {
+      "leaf_id": 135,
+      "truth_cm2": 22.933,
+      "scalar_cm2": 21.72740586070499,
+      "projective_cm2": 26.005,
+      "projective_scalar_ratio": 1.1968755113573513,
+      "oracle_signed_error_cm2": 3.071999999999999,
+      "automatic_mask_iou": 0.8222871994801819
+    },
+    {
+      "leaf_id": 136,
+      "truth_cm2": 21.067,
+      "scalar_cm2": 22.063767106503636,
+      "projective_cm2": 27.641,
+      "projective_scalar_ratio": 1.2527779080777364,
+      "oracle_signed_error_cm2": 6.573999999999998,
+      "automatic_mask_iou": 0.9853430688285193
+    },
+    {
+      "leaf_id": 141,
+      "truth_cm2": 28.4,
+      "scalar_cm2": 22.285032853248982,
+      "projective_cm2": 23.25,
+      "projective_scalar_ratio": 1.0433011318899776,
+      "oracle_signed_error_cm2": -5.149999999999999,
+      "automatic_mask_iou": 0.9811079201411715
+    },
+    {
+      "leaf_id": 142,
+      "truth_cm2": 24.933,
+      "scalar_cm2": 29.93697017198924,
+      "projective_cm2": 35.265,
+      "projective_scalar_ratio": 1.1779749185505743,
+      "oracle_signed_error_cm2": 10.332,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 143,
+      "truth_cm2": 22.533,
+      "scalar_cm2": 19.100680541686998,
+      "projective_cm2": 23.903,
+      "projective_scalar_ratio": 1.2514213798734553,
+      "oracle_signed_error_cm2": 1.3699999999999974,
+      "automatic_mask_iou": 0.9780544938971767
+    },
+    {
+      "leaf_id": 144,
+      "truth_cm2": 22.933,
+      "scalar_cm2": 24.750102305404308,
+      "projective_cm2": 34.07,
+      "projective_scalar_ratio": 1.376559966483882,
+      "oracle_signed_error_cm2": 11.137,
+      "automatic_mask_iou": 0.96401467916058
+    },
+    {
+      "leaf_id": 155,
+      "truth_cm2": 25.067,
+      "scalar_cm2": 26.3267036078286,
+      "projective_cm2": 25.922,
+      "projective_scalar_ratio": 0.9846276383911484,
+      "oracle_signed_error_cm2": 0.8550000000000004,
+      "automatic_mask_iou": 0.9646329772665023
+    },
+    {
+      "leaf_id": 156,
+      "truth_cm2": 20.667,
+      "scalar_cm2": 23.693646659628442,
+      "projective_cm2": 27.154,
+      "projective_scalar_ratio": 1.1460456210089285,
+      "oracle_signed_error_cm2": 6.486999999999998,
+      "automatic_mask_iou": 0.9808349609375
+    },
+    {
+      "leaf_id": 163,
+      "truth_cm2": 32.4,
+      "scalar_cm2": 31.144765590346605,
+      "projective_cm2": 36.791,
+      "projective_scalar_ratio": 1.1812899953693488,
+      "oracle_signed_error_cm2": 4.390999999999998,
+      "automatic_mask_iou": 0.9270895725564934
+    },
+    {
+      "leaf_id": 164,
+      "truth_cm2": 36.267,
+      "scalar_cm2": 31.4579850925009,
+      "projective_cm2": 33.653,
+      "projective_scalar_ratio": 1.0697760807325947,
+      "oracle_signed_error_cm2": -2.6140000000000043,
+      "automatic_mask_iou": 0.8836787487734531
+    },
+    {
+      "leaf_id": 167,
+      "truth_cm2": 23.6,
+      "scalar_cm2": 23.253030027614326,
+      "projective_cm2": 27.668,
+      "projective_scalar_ratio": 1.1898664374983665,
+      "oracle_signed_error_cm2": 4.067999999999998,
+      "automatic_mask_iou": 0.9750132258983437
+    },
+    {
+      "leaf_id": 168,
+      "truth_cm2": 24.133,
+      "scalar_cm2": 22.369996800675768,
+      "projective_cm2": 51.393,
+      "projective_scalar_ratio": 2.2974075704135766,
+      "oracle_signed_error_cm2": 27.26,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 181,
+      "truth_cm2": 27.067,
+      "scalar_cm2": 26.072907818046517,
+      "projective_cm2": 30.212,
+      "projective_scalar_ratio": 1.1587506928969613,
+      "oracle_signed_error_cm2": 3.1449999999999996,
+      "automatic_mask_iou": 0.9847076900563401
+    },
+    {
+      "leaf_id": 182,
+      "truth_cm2": 28.0,
+      "scalar_cm2": 27.305370221063683,
+      "projective_cm2": 29.621,
+      "projective_scalar_ratio": 1.0848049215296856,
+      "oracle_signed_error_cm2": 1.6209999999999987,
+      "automatic_mask_iou": 0.9859923714323293
+    },
+    {
+      "leaf_id": 205,
+      "truth_cm2": 30.533,
+      "scalar_cm2": 28.218332610299885,
+      "projective_cm2": 33.53,
+      "projective_scalar_ratio": 1.1882346297017323,
+      "oracle_signed_error_cm2": 2.997,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 206,
+      "truth_cm2": 35.2,
+      "scalar_cm2": 35.63483222220542,
+      "projective_cm2": 43.201,
+      "projective_scalar_ratio": 1.2123250568605124,
+      "oracle_signed_error_cm2": 8.000999999999998,
+      "automatic_mask_iou": 0.9111076596515751
+    },
+    {
+      "leaf_id": 215,
+      "truth_cm2": 25.067,
+      "scalar_cm2": 24.461899787471214,
+      "projective_cm2": 26.132,
+      "projective_scalar_ratio": 1.0682735285091869,
+      "oracle_signed_error_cm2": 1.0650000000000013,
+      "automatic_mask_iou": 0.9886382964248053
+    },
+    {
+      "leaf_id": 216,
+      "truth_cm2": 29.067,
+      "scalar_cm2": 28.054074004106514,
+      "projective_cm2": 47.184,
+      "projective_scalar_ratio": 1.681894757713025,
+      "oracle_signed_error_cm2": 18.116999999999997,
+      "automatic_mask_iou": 0.9868499110144354
+    },
+    {
+      "leaf_id": 228,
+      "truth_cm2": 24.933,
+      "scalar_cm2": 30.34551616346108,
+      "projective_cm2": 31.589,
+      "projective_scalar_ratio": 1.0409775147616764,
+      "oracle_signed_error_cm2": 6.655999999999999,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 262,
+      "truth_cm2": 31.067,
+      "scalar_cm2": 31.848646417919404,
+      "projective_cm2": 31.471,
+      "projective_scalar_ratio": 0.9881424656808359,
+      "oracle_signed_error_cm2": 0.4039999999999999,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 271,
+      "truth_cm2": 27.733,
+      "scalar_cm2": 38.53136278456981,
+      "projective_cm2": 50.474,
+      "projective_scalar_ratio": 1.3099458818054759,
+      "oracle_signed_error_cm2": 22.740999999999996,
+      "automatic_mask_iou": 0.9849091266977232
+    },
+    {
+      "leaf_id": 272,
+      "truth_cm2": 25.333,
+      "scalar_cm2": 23.993142450459626,
+      "projective_cm2": 25.862,
+      "projective_scalar_ratio": 1.0778913205470746,
+      "oracle_signed_error_cm2": 0.5289999999999999,
+      "automatic_mask_iou": 0.9873483858928904
+    },
+    {
+      "leaf_id": 309,
+      "truth_cm2": 31.733,
+      "scalar_cm2": 24.872893978701914,
+      "projective_cm2": 27.274,
+      "projective_scalar_ratio": 1.096535048288072,
+      "oracle_signed_error_cm2": -4.459,
+      "automatic_mask_iou": 0.9818565269981081
+    },
+    {
+      "leaf_id": 310,
+      "truth_cm2": 36.8,
+      "scalar_cm2": 31.258285013341588,
+      "projective_cm2": 34.423,
+      "projective_scalar_ratio": 1.1012440377105672,
+      "oracle_signed_error_cm2": -2.3769999999999953,
+      "automatic_mask_iou": 0.9874047582024569
+    },
+    {
+      "leaf_id": 326,
+      "truth_cm2": 27.733,
+      "scalar_cm2": 30.95243282665524,
+      "projective_cm2": 34.346,
+      "projective_scalar_ratio": 1.1096381403151718,
+      "oracle_signed_error_cm2": 6.612999999999996,
+      "automatic_mask_iou": 0.9786234511460731
+    },
+    {
+      "leaf_id": 333,
+      "truth_cm2": 30.267,
+      "scalar_cm2": 26.192779204607003,
+      "projective_cm2": 28.558,
+      "projective_scalar_ratio": 1.0903004899524744,
+      "oracle_signed_error_cm2": -1.7089999999999996,
+      "automatic_mask_iou": 0.9863118598640758
+    },
+    {
+      "leaf_id": 334,
+      "truth_cm2": 24.667,
+      "scalar_cm2": 25.753740208458918,
+      "projective_cm2": 27.312,
+      "projective_scalar_ratio": 1.060506154792587,
+      "oracle_signed_error_cm2": 2.6449999999999996,
+      "automatic_mask_iou": 0.9321988114532685
+    },
+    {
+      "leaf_id": 347,
+      "truth_cm2": 19.6,
+      "scalar_cm2": 19.89715843343863,
+      "projective_cm2": 22.464,
+      "projective_scalar_ratio": 1.1290054343763782,
+      "oracle_signed_error_cm2": 2.863999999999997,
+      "automatic_mask_iou": 0.9897162197344441
+    },
+    {
+      "leaf_id": 348,
+      "truth_cm2": 20.0,
+      "scalar_cm2": 19.018775024157375,
+      "projective_cm2": 19.312,
+      "projective_scalar_ratio": 1.015417658364967,
+      "oracle_signed_error_cm2": -0.6879999999999988,
+      "automatic_mask_iou": 0.9744443993011823
+    },
+    {
+      "leaf_id": 350,
+      "truth_cm2": 20.4,
+      "scalar_cm2": 22.184668150368203,
+      "projective_cm2": 20.895,
+      "projective_scalar_ratio": 0.9418666918239749,
+      "oracle_signed_error_cm2": 0.495000000000001,
+      "automatic_mask_iou": 0.9852443154329947
+    },
+    {
+      "leaf_id": 357,
+      "truth_cm2": 20.533,
+      "scalar_cm2": 20.413375322674142,
+      "projective_cm2": 20.245,
+      "projective_scalar_ratio": 0.9917517157249778,
+      "oracle_signed_error_cm2": -0.28800000000000026,
+      "automatic_mask_iou": 0.9480781089414183
+    },
+    {
+      "leaf_id": 358,
+      "truth_cm2": 24.0,
+      "scalar_cm2": 27.600432379289042,
+      "projective_cm2": 29.655,
+      "projective_scalar_ratio": 1.0744396896569155,
+      "oracle_signed_error_cm2": 5.655000000000001,
+      "automatic_mask_iou": 0.9777043489870164
+    },
+    {
+      "leaf_id": 367,
+      "truth_cm2": 21.333,
+      "scalar_cm2": 17.416463697114093,
+      "projective_cm2": 17.443,
+      "projective_scalar_ratio": 1.0015236332327502,
+      "oracle_signed_error_cm2": -3.889999999999997,
+      "automatic_mask_iou": 0.9724568915634765
+    },
+    {
+      "leaf_id": 368,
+      "truth_cm2": 22.667,
+      "scalar_cm2": 24.135679241378963,
+      "projective_cm2": 24.073,
+      "projective_scalar_ratio": 0.9974030463053427,
+      "oracle_signed_error_cm2": 1.4059999999999988,
+      "automatic_mask_iou": 0.9553943179035024
+    },
+    {
+      "leaf_id": 405,
+      "truth_cm2": 29.067,
+      "scalar_cm2": 37.20028143518774,
+      "projective_cm2": 37.522,
+      "projective_scalar_ratio": 1.008648283088201,
+      "oracle_signed_error_cm2": 8.454999999999998,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 415,
+      "truth_cm2": 38.933,
+      "scalar_cm2": 43.21692895713255,
+      "projective_cm2": 45.183,
+      "projective_scalar_ratio": 1.0454930762159806,
+      "oracle_signed_error_cm2": 6.25,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 416,
+      "truth_cm2": 34.667,
+      "scalar_cm2": 34.63182220211319,
+      "projective_cm2": 32.996,
+      "projective_scalar_ratio": 0.9527653441806659,
+      "oracle_signed_error_cm2": -1.6709999999999994,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 425,
+      "truth_cm2": 30.0,
+      "scalar_cm2": 30.343389560593156,
+      "projective_cm2": 32.851,
+      "projective_scalar_ratio": 1.082641078525501,
+      "oracle_signed_error_cm2": 2.850999999999999,
+      "automatic_mask_iou": 0.8931208705790905
+    },
+    {
+      "leaf_id": 426,
+      "truth_cm2": 25.467,
+      "scalar_cm2": 24.716149952988488,
+      "projective_cm2": 27.824,
+      "projective_scalar_ratio": 1.1257416730729835,
+      "oracle_signed_error_cm2": 2.357000000000003,
+      "automatic_mask_iou": 0.9461324871082903
+    },
+    {
+      "leaf_id": 449,
+      "truth_cm2": 27.867,
+      "scalar_cm2": 26.35711949436521,
+      "projective_cm2": 28.905,
+      "projective_scalar_ratio": 1.096667638744799,
+      "oracle_signed_error_cm2": 1.0380000000000003,
+      "automatic_mask_iou": 0.9800164248562825
+    },
+    {
+      "leaf_id": 450,
+      "truth_cm2": 27.733,
+      "scalar_cm2": 27.648682965083054,
+      "projective_cm2": 30.116,
+      "projective_scalar_ratio": 1.0892381397708117,
+      "oracle_signed_error_cm2": 2.382999999999999,
+      "automatic_mask_iou": 0.9802891332077993
+    },
+    {
+      "leaf_id": 457,
+      "truth_cm2": 29.467,
+      "scalar_cm2": 29.49819040773978,
+      "projective_cm2": 34.914,
+      "projective_scalar_ratio": 1.1835980281298615,
+      "oracle_signed_error_cm2": 5.447000000000003,
+      "automatic_mask_iou": 0.9844077961019491
+    },
+    {
+      "leaf_id": 458,
+      "truth_cm2": 34.267,
+      "scalar_cm2": 31.343520106846277,
+      "projective_cm2": 36.175,
+      "projective_scalar_ratio": 1.1541460524115923,
+      "oracle_signed_error_cm2": 1.9079999999999941,
+      "automatic_mask_iou": 0.979829565798582
+    },
+    {
+      "leaf_id": 459,
+      "truth_cm2": 22.0,
+      "scalar_cm2": 17.05606468744433,
+      "projective_cm2": 17.527,
+      "projective_scalar_ratio": 1.0276110182029472,
+      "oracle_signed_error_cm2": -4.472999999999999,
+      "automatic_mask_iou": 0.970678592261326
+    },
+    {
+      "leaf_id": 460,
+      "truth_cm2": 18.533,
+      "scalar_cm2": 22.29772333735881,
+      "projective_cm2": 22.933,
+      "projective_scalar_ratio": 1.028490651401025,
+      "oracle_signed_error_cm2": 4.399999999999999,
+      "automatic_mask_iou": 0.9791974275683302
+    },
+    {
+      "leaf_id": 463,
+      "truth_cm2": 25.2,
+      "scalar_cm2": 20.605626048498237,
+      "projective_cm2": 22.48,
+      "projective_scalar_ratio": 1.0909641836210247,
+      "oracle_signed_error_cm2": -2.719999999999999,
+      "automatic_mask_iou": 0.9896672388749505
+    },
+    {
+      "leaf_id": 464,
+      "truth_cm2": 25.333,
+      "scalar_cm2": 28.928613675766766,
+      "projective_cm2": 30.685,
+      "projective_scalar_ratio": 1.0607145003185736,
+      "oracle_signed_error_cm2": 5.352,
+      "automatic_mask_iou": 0.0
+    },
+    {
+      "leaf_id": 493,
+      "truth_cm2": 22.133,
+      "scalar_cm2": 21.874255722392146,
+      "projective_cm2": 22.685,
+      "projective_scalar_ratio": 1.0370638566128636,
+      "oracle_signed_error_cm2": 0.5519999999999996,
+      "automatic_mask_iou": 0.9850419174174696
+    },
+    {
+      "leaf_id": 510,
+      "truth_cm2": 26.0,
+      "scalar_cm2": 28.896465147857157,
+      "projective_cm2": 33.895,
+      "projective_scalar_ratio": 1.172980841309357,
+      "oracle_signed_error_cm2": 7.895000000000003,
+      "automatic_mask_iou": 0.9843452909113957
+    },
+    {
+      "leaf_id": 547,
+      "truth_cm2": 19.6,
+      "scalar_cm2": 20.209338348529,
+      "projective_cm2": 19.918,
+      "projective_scalar_ratio": 0.9855839739280625,
+      "oracle_signed_error_cm2": 0.31799999999999784,
+      "automatic_mask_iou": 0.9581456662638691
+    },
+    {
+      "leaf_id": 548,
+      "truth_cm2": 21.067,
+      "scalar_cm2": 21.78553491112611,
+      "projective_cm2": 22.373,
+      "projective_scalar_ratio": 1.0269658326623812,
+      "oracle_signed_error_cm2": 1.306000000000001,
+      "automatic_mask_iou": 0.9868841654308782
+    },
+    {
+      "leaf_id": 551,
+      "truth_cm2": 20.267,
+      "scalar_cm2": 22.48953267556424,
+      "projective_cm2": 23.899,
+      "projective_scalar_ratio": 1.0626721481841728,
+      "oracle_signed_error_cm2": 3.6320000000000014,
+      "automatic_mask_iou": 0.9622722247976322
+    },
+    {
+      "leaf_id": 555,
+      "truth_cm2": 18.533,
+      "scalar_cm2": 16.38208344662365,
+      "projective_cm2": 17.959,
+      "projective_scalar_ratio": 1.0962586082847328,
+      "oracle_signed_error_cm2": -0.5740000000000016,
+      "automatic_mask_iou": 0.9806432400238237
+    },
+    {
+      "leaf_id": 556,
+      "truth_cm2": 22.4,
+      "scalar_cm2": 20.182631547553996,
+      "projective_cm2": 23.288,
+      "projective_scalar_ratio": 1.1538634070155414,
+      "oracle_signed_error_cm2": 0.8880000000000017,
+      "automatic_mask_iou": 0.984339702109737
+    },
+    {
+      "leaf_id": 583,
+      "truth_cm2": 30.667,
+      "scalar_cm2": 28.56232249460795,
+      "projective_cm2": 32.232,
+      "projective_scalar_ratio": 1.128479660786857,
+      "oracle_signed_error_cm2": 1.5649999999999977,
+      "automatic_mask_iou": 0.9607526186473555
+    },
+    {
+      "leaf_id": 584,
+      "truth_cm2": 28.4,
+      "scalar_cm2": 26.088169668710655,
+      "projective_cm2": 28.944,
+      "projective_scalar_ratio": 1.1094684053176234,
+      "oracle_signed_error_cm2": 0.5440000000000005,
+      "automatic_mask_iou": 0.9913055403181569
+    },
+    {
+      "leaf_id": 609,
+      "truth_cm2": 18.533,
+      "scalar_cm2": 16.48128702799363,
+      "projective_cm2": 17.23,
+      "projective_scalar_ratio": 1.045428064612592,
+      "oracle_signed_error_cm2": -1.3030000000000008,
+      "automatic_mask_iou": 0.9897639599725002
+    },
+    {
+      "leaf_id": 610,
+      "truth_cm2": 17.6,
+      "scalar_cm2": 17.117646762260073,
+      "projective_cm2": 17.611,
+      "projective_scalar_ratio": 1.028821323666267,
+      "oracle_signed_error_cm2": 0.010999999999999233,
+      "automatic_mask_iou": 0.9867308179285895
+    }
+  ]
+}

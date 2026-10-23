@@ -1,0 +1,12 @@
+{
+  "source": "https://data.mendeley.com/datasets/px5p6zdk6k/3",
+  "license": "CC BY 4.0",
+  "role": "EXTERNAL_VALIDATION_ONLY_NOT_TRAINING_OR_REFERENCE_FITTING",
+  "image_sets": 20,
+  "diameter_annotations": 94,
+  "unique_physical_specimens": null,
+  "archive_sha256": "39a2e88b7bab3b1e36deef3d5828b784d3ff98b7d500358c316f8f294e9115b1",
+  "engine_compatibility": "RGB-D field capture, not an ArUco planar station; current engine does not estimate physical size from this depth sensor.",
+  "model_accuracy": null,
+  "limitation": "Acquired and inventoried only. Not an end-to-end sizing result. Do not use the validation-only annotations to fit the average cutoff."
+}

@@ -1,0 +1,159 @@
+{
+  "source": "https://data.mendeley.com/datasets/f42hwwrpgn/3",
+  "source_version": 3,
+  "physical_captures": 612,
+  "measured_leaves": 612,
+  "plants": 306,
+  "split": {
+    "train_leaves": 406,
+    "validation_leaves": 84,
+    "held_out_test_leaves": 122
+  },
+  "source_preprocessing": "Authors cropped/resized physical captures to512. No generated/composited or augmented training/evaluation views used here.",
+  "reference_average_cm2": 25.451243842364534,
+  "models": [
+    {
+      "run": "pixel_rf_v1",
+      "accepted": 53,
+      "correct": 42,
+      "wrong": 11,
+      "coverage": 0.6309523809523809,
+      "accepted_accuracy": 0.7924528301886793,
+      "checkpoint_sha256": "db0b21ece3fe5b5c995a4a1fa1e5456ac3ca22cce56032cc34573cc74f6f70fa",
+      "deployment": "REJECTED_RESEARCH_ONLY"
+    },
+    {
+      "run": "pixel_rf_v2",
+      "accepted": 44,
+      "correct": 38,
+      "wrong": 6,
+      "coverage": 0.5238095238095238,
+      "accepted_accuracy": 0.8636363636363636,
+      "checkpoint_sha256": "eb8630de3785f652eecc58696f96cf20fb98eab1e952fe311d38310373975396",
+      "deployment": "REJECTED_RESEARCH_ONLY"
+    },
+    {
+      "run": "pixel_rf_v3",
+      "measurement_method": "marker_area_scalar",
+      "accepted": 37,
+      "correct": 35,
+      "wrong": 2,
+      "coverage": 0.44047619047619047,
+      "accepted_accuracy": 0.9459459459459459,
+      "checkpoint_sha256": "1b7b1101a422301b79a6020bb83bf2195d8510c4ab256109bdaaeeab9e9110a8",
+      "deployment": "REJECTED_RESEARCH_ONLY"
+    },
+    {
+      "run": "pixel_rf_v4_median",
+      "accepted": 37,
+      "correct": 34,
+      "wrong": 3,
+      "coverage": 0.44047619047619047,
+      "accepted_accuracy": 0.918918918918919,
+      "checkpoint_sha256": "5bab598a910526043b1cb6cabe14d92852b738539f42e56d199c0906cd2e3c05",
+      "reference_statistic": "median",
+      "deployment": "REJECTED_RESEARCH_ONLY"
+    }
+  ],
+  "canonical_test_evaluated": true,
+  "active_ui_model": null,
+  "status": "MEDIAN_RERUN_FAILED_NOT_RELEASED",
+  "next_discriminating_experiment": "Requires new independent, physically measured captures from the intended setup and additional requested vegetable/leaf types. Do not tune on the now-evaluated source test fold.",
+  "limits": [
+    "One bean-leaf source, one original capture per leaf; not every vegetable or camera.",
+    "The human-mask geometry diagnostic also has wrong size decisions; segmentation alone cannot meet the target.",
+    "No universal100% claim; no safe release based on these validation results.",
+    "Widening bounds to cover every observed validation error left only2/84 labels; rejected as a complete solution rather than called100% accurate."
+  ],
+  "final_test": {
+    "captures": 122,
+    "accepted": 67,
+    "correct": 62,
+    "accepted_coverage": 0.5491803278688525,
+    "accepted_accuracy": 0.9253731343283582,
+    "correct_fraction_all_captures": 0.5081967213114754,
+    "measured_captures": 98,
+    "measurement_mae_cm2": 2.5821428571428573,
+    "engineering_bound_truth_coverage": 0.6122448979591837,
+    "confusion": {
+      "SMALL->REFUSED": 25,
+      "BIG->BIG": 22,
+      "BIG->REFUSED": 30,
+      "SMALL->SMALL": 40,
+      "SMALL->BIG": 2,
+      "BIG->SMALL": 3
+    },
+    "statuses": {
+      "NO_COMPLETE_LEAF": 16,
+      "ACCEPTED": 67,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 31
+    }
+  },
+  "clean_final_test": {
+    "captures": 120,
+    "accepted": 67,
+    "correct": 62,
+    "accepted_coverage": 0.5583333333333333,
+    "accepted_accuracy": 0.9253731343283582,
+    "correct_fraction_all_captures": 0.5166666666666667,
+    "measured_captures": 98,
+    "measurement_mae_cm2": 2.5821428571428573,
+    "engineering_bound_truth_coverage": 0.6122448979591837,
+    "confusion": {
+      "BIG->BIG": 22,
+      "BIG->REFUSED": 30,
+      "SMALL->SMALL": 40,
+      "SMALL->REFUSED": 23,
+      "SMALL->BIG": 2,
+      "BIG->SMALL": 3
+    },
+    "statuses": {
+      "ACCEPTED": 67,
+      "NO_COMPLETE_LEAF": 14,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 31
+    }
+  },
+  "reference_statistic": "median",
+  "reference_threshold_cm2": 24.933,
+  "reference_distribution_cm2": {
+    "mean": 25.451243842364534,
+    "median": 24.933,
+    "small_group_median": 21.733,
+    "big_group_median": 28.2,
+    "small_specimens": 200,
+    "big_specimens": 206,
+    "minimum": 15.333,
+    "maximum": 39.733,
+    "sample_standard_deviation": 4.8291610520172155,
+    "boundary_rule": "SMALL < median; BIG >= median; ties belong to BIG"
+  },
+  "median_post_test_diagnostic": {
+    "captures": 120,
+    "accepted": 67,
+    "correct": 60,
+    "accepted_coverage": 0.5583333333333333,
+    "accepted_accuracy": 0.8955223880597015,
+    "correct_fraction_all_captures": 0.5,
+    "measured_captures": 98,
+    "measurement_mae_cm2": 2.5821428571428573,
+    "engineering_bound_truth_coverage": 0.6122448979591837,
+    "confusion": {
+      "BIG->BIG": 23,
+      "BIG->REFUSED": 33,
+      "SMALL->SMALL": 37,
+      "SMALL->REFUSED": 20,
+      "SMALL->BIG": 5,
+      "BIG->SMALL": 2
+    },
+    "statuses": {
+      "ACCEPTED": 67,
+      "NO_COMPLETE_LEAF": 14,
+      "CALIBRATION_REQUIRED": 8,
+      "REVIEW_BORDERLINE": 31
+    }
+  },
+  "median_post_test_diagnostic_note": "Pilot-excluded does not mean unseen: this source test was already evaluated during V3.",
+  "industry_research": "../INDUSTRIAL_SIZING_RESEARCH.md"
+}

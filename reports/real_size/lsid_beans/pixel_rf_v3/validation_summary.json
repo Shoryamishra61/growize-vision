@@ -1,0 +1,74 @@
+{
+  "scope": "Single-source bean-leaf area sizing; recorded crop identity, one capture per leaf; not universal produce grading.",
+  "split": "validation",
+  "checkpoint_sha256": "1b7b1101a422301b79a6020bb83bf2195d8510c4ab256109bdaaeeab9e9110a8",
+  "script_sha256": "8ec4ada3180ebf8e2895d07670a15bccffb23811a0eadf13fbf69ef1d864ec57",
+  "acquisition_sha256": "c28734b39bb325f0d0b306203b5453cb15f9772e19344f51f48a8378dd85d599",
+  "split_sha256": "d39949b34028d0e3befb6a13ccb2463382b5a5e3e54bacb9f0497fbc49a9fdb4",
+  "reference_mean_cm2": 25.451243842364534,
+  "measurement_method": "marker_area_scalar",
+  "training_leaves": 406,
+  "automatic": {
+    "captures": 84,
+    "accepted": 37,
+    "correct": 35,
+    "accepted_coverage": 0.44047619047619047,
+    "accepted_accuracy": 0.9459459459459459,
+    "correct_fraction_all_captures": 0.4166666666666667,
+    "measured_captures": 64,
+    "measurement_mae_cm2": 2.49078125,
+    "engineering_bound_truth_coverage": 0.609375,
+    "confusion": {
+      "SMALL->REFUSED": 29,
+      "SMALL->SMALL": 22,
+      "SMALL->BIG": 1,
+      "BIG->BIG": 13,
+      "BIG->REFUSED": 18,
+      "BIG->SMALL": 1
+    },
+    "statuses": {
+      "NO_COMPLETE_LEAF": 13,
+      "ACCEPTED": 37,
+      "CALIBRATION_REQUIRED": 7,
+      "REVIEW_BORDERLINE": 27
+    }
+  },
+  "oracle_mask_diagnostic_not_automatic": {
+    "captures": 84,
+    "accepted": 47,
+    "correct": 42,
+    "accepted_coverage": 0.5595238095238095,
+    "accepted_accuracy": 0.8936170212765957,
+    "correct_fraction_all_captures": 0.5,
+    "measured_captures": 74,
+    "measurement_mae_cm2": 2.5908513513513514,
+    "engineering_bound_truth_coverage": 0.5405405405405406,
+    "confusion": {
+      "SMALL->SMALL": 27,
+      "SMALL->REFUSED": 21,
+      "SMALL->BIG": 4,
+      "BIG->REFUSED": 16,
+      "BIG->BIG": 15,
+      "BIG->SMALL": 1
+    },
+    "statuses": {
+      "ACCEPTED": 47,
+      "CALIBRATION_REQUIRED": 7,
+      "REVIEW_BORDERLINE": 27,
+      "OCCLUDED_MARKER": 3
+    }
+  },
+  "mask_iou_mean": 0.8059072458979424,
+  "existing_controlled_mat_statuses": {
+    "OUT_OF_DISTRIBUTION": 77,
+    "CALIBRATION_REQUIRED": 7
+  },
+  "median_processing_ms": 228.41804999188753,
+  "deployment_decision": "RESEARCH_ONLY_NOT_PROMOTED",
+  "limitations": [
+    "No automatic species identification or cross-crop validation.",
+    "Source frames were cropped/resized by their authors, not digitally augmented here.",
+    "Engineering uncertainty bounds are not statistical coverage guarantees.",
+    "One development pilot (leaf 001) was inspected; exclude its plant for a clean test summary."
+  ]
+}

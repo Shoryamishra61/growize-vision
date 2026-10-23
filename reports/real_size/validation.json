@@ -1,0 +1,17 @@
+{
+  "scope": "physical_metrology_with_recorded_crop_policy",
+  "status": "BLOCKED",
+  "manifest_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "original_photos": 0,
+  "unique_specimens": 0,
+  "accuracy": null,
+  "accepted_accuracy": null,
+  "measurement_mae_by_unit": {},
+  "limitations": [
+    "Finite test results do not establish universal 100% accuracy.",
+    "Original-photo authenticity requires independent provenance review.",
+    "Recorded crop policy is supplied; automatic recognition is not evaluated.",
+    "Reference averages are estimated from training specimens only; population representativeness is unverified."
+  ],
+  "reason": "No reviewed original photographs with physical measurements were supplied."
+}

@@ -1,0 +1,48 @@
+{
+  "created_utc": "2026-10-23T03:58:04.006985+00:00",
+  "images": 26993,
+  "sources": {
+    "cropped_okra_pods": 636,
+    "extracted_onion": 495,
+    "harvested_okra": 8,
+    "indian_veg": 3599,
+    "kaggle_veg": 21000,
+    "okra_pods": 354,
+    "spinach": 500,
+    "white_bg_okra": 401
+  },
+  "labels": {
+    "Okra": 1399,
+    "Onion": 495,
+    "null": 3599,
+    "Bean": 1400,
+    "Bitter_Gourd": 1400,
+    "Bottle_Gourd": 1400,
+    "Brinjal": 1400,
+    "Broccoli": 1400,
+    "Cabbage": 1400,
+    "Capsicum": 1400,
+    "Carrot": 1400,
+    "Cauliflower": 1400,
+    "Cucumber": 1400,
+    "Papaya": 1400,
+    "Potato": 1400,
+    "Pumpkin": 1400,
+    "Radish": 1400,
+    "Tomato": 1400,
+    "Amaranth Leaves": 100,
+    "Black Nightshade": 100,
+    "Curry Leaves": 100,
+    "Drumstick Leaves": 100,
+    "Malabar Spinach": 100
+  },
+  "decode_errors": [],
+  "duplicate_pixel_groups": 64,
+  "cross_original_split_duplicate_groups": [],
+  "limitations": [
+    "No specimen IDs or measured physical ground truth inferred.",
+    "dHash is a discovery aid, not a guarantee against near-duplicate leakage.",
+    "Source rights require separate approval before new training.",
+    "The spinach folder contains five distinct leaf taxa, not one spinach class."
+  ]
+}
