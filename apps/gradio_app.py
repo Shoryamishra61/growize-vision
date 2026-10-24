@@ -511,36 +511,11 @@ def build_app():
                     outputs=[source, output, status, ref_points_state, ref_points_label],
                     queue=False,
                 )
-            # Live-streaming Camera tab removed: the in-browser webcam stream
-            # does not render on the embedded Space. Camera workflows still
-            # work through the Video tab (webcam recording) and image upload;
-            # live_inspect_ui and LiveSession remain for API/embedding use.
-            with gr.Tab("Camera / Video"):
-                video_crop = gr.Dropdown(
-                    choices=CROP_UI_CHOICES,
-                    value=crop_choices[0] if crop_choices else None,
-                    label="Crop",
-                )
-                video_station = gr.Checkbox(
-                    value=True,
-                    label="Station mode (fixed camera): calibrate once with the marker visible",
-                )
-                with gr.Row():
-                    with gr.Column():
-                        video = gr.Video(sources=["upload", "webcam"], label="Video", height=320)
-                        video_run = gr.Button("Check video", variant="primary")
-                    with gr.Column():
-                        replay = gr.Video(label="Output", interactive=False, height=320)
-                        video_status = gr.HTML(
-                            result_html("Ready", "Upload or record a video, up to two minutes.")
-                        )
-                video_run.click(
-                    process_video_ui,
-                    [video, video_crop, video_station],
-                    [replay, video_status],
-                    concurrency_id="inspection",
-                    concurrency_limit=1,
-                )
+            # Live camera and video tabs removed from the demo UI: browser
+            # streaming does not render on the embedded Space and video
+            # processing exceeds the demo time budget. Image upload is the
+            # demo path; process_video_ui / live_inspect_ui / LiveSession
+            # remain available for API and embedded deployments.
     return app
 
 
