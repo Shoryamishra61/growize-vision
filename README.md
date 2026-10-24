@@ -16,7 +16,9 @@ license: apache-2.0
 One shared inference engine serves still-image upload, laptop webcam inspection, and MP4
 upload; accepted observations receive exactly one of two labels, `SMALL` or `BIG`.
 
-> ## Evidence status — read this first
+> See [docs/SHOWCASE.md](docs/SHOWCASE.md) for real annotated outputs per vegetable and the accuracy tables.
+
+## Evidence status — read this first
 >
 > - **Physical size-model release is blocked.** No measured station reference and
 >   independent test set are available. No universal size accuracy is established.

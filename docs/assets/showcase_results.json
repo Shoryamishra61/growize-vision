@@ -1,0 +1,52 @@
+[
+ {
+  "name": "okra_single",
+  "title": " Okra \u2014 BIG (3) Okra: 330 \u00b1 99 mm \u2192 BIG",
+  "message": " Okra \u2014 BIG (3) Okra: 330 \u00b1 99 mm \u2192 BIG. Scale estimated from assumed camera distance. "
+ },
+ {
+  "name": "potato_single",
+  "title": " Potato \u2014 BIG (3) Potato: 172 \u00b1 52 mm \u2192 BIG",
+  "message": " Potato \u2014 BIG (3) Potato: 172 \u00b1 52 mm \u2192 BIG. Scale estimated from assumed camera distance. "
+ },
+ {
+  "name": "tomato_single",
+  "title": " Tomato \u2014 BIG (3) Tomato: 388 \u00b1 117 mm \u2192 BIG",
+  "message": " Tomato \u2014 BIG (3) Tomato: 388 \u00b1 117 mm \u2192 BIG. Scale estimated from assumed camera distance. "
+ },
+ {
+  "name": "cucumber_single",
+  "title": " Estimated BIG (uncalibrated) Detected cucumber; its footprint is 1.48x the typi",
+  "message": " Estimated BIG (uncalibrated) Detected cucumber; its footprint is 1.48x the typical size in real-photo references -> estimated BIG. This is an appearance comparison, not millimetres: framing and distance change it. Add the printed marker or any known-length reference for measured grading. "
+ },
+ {
+  "name": "bean_single",
+  "title": " Green / French bean \u2014 BIG (3) Green / French bean: 262 \u00b1 79 mm \u2192 BIG",
+  "message": " Green / French bean \u2014 BIG (3) Green / French bean: 262 \u00b1 79 mm \u2192 BIG. Scale estimated from assumed camera distance. "
+ },
+ {
+  "name": "chili_single",
+  "title": " Green chilli \u2014 BIG (3) Green chilli: 204 \u00b1 61 mm \u2192 BIG",
+  "message": " Green chilli \u2014 BIG (3) Green chilli: 204 \u00b1 61 mm \u2192 BIG. Scale estimated from assumed camera distance. "
+ },
+ {
+  "name": "okra_pile",
+  "title": " Okra \u00b7 2 SMALL \u00b7 1 BIG 3 okras",
+  "message": " Okra \u00b7 2 SMALL \u00b7 1 BIG 3 okras in this photo graded: 2 SMALL \u00b7 1 BIG. Each item is outlined and labelled with its size on the output image. Graded against published size references using estimated scale. "
+ },
+ {
+  "name": "okra_bunch",
+  "title": " Okra \u00b7 3 MEDIUM 3 okras",
+  "message": " Okra \u00b7 3 MEDIUM 3 okras in this photo graded: 3 MEDIUM. Each item is outlined and labelled with its size on the output image. Sizes are relative to this batch \u2014 no scale in the photo. "
+ },
+ {
+  "name": "okra_overlap",
+  "title": " Okra \u00b7 1 MEDIUM \u00b7 1 BIG 2 okras",
+  "message": " Okra \u00b7 1 MEDIUM \u00b7 1 BIG 2 okras in this photo graded: 1 MEDIUM \u00b7 1 BIG. Each item is outlined and labelled with its size on the output image. Graded against published size references using estimated scale. "
+ },
+ {
+  "name": "potato_batch",
+  "title": " Potato \u00b7 2 BIG 2 potatoes",
+  "message": " Potato \u00b7 2 BIG 2 potatoes in this photo graded: 2 BIG. Each item is outlined and labelled with its size on the output image. Graded against published size references using estimated scale. "
+ }
+]
