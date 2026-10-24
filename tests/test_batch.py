@@ -209,7 +209,10 @@ def test_batch_single_item_explains_it_cannot_split() -> None:
     assert any("BATCH_SPLIT_NEEDS_MORE_ITEMS" in r for r in result.reasons)
 
 
-def test_batch_mode_still_refuses_edge_clipped_items() -> None:
+def test_batch_grades_edge_clipped_items_with_a_warning() -> None:
+    """A sorter must label every item: an item clipped by the frame edge is
+    graded from its visible part with an explicit EDGE_CLIPPED_GRADED flag
+    instead of being refused."""
     import cv2
 
     rng = np.random.default_rng(7)
@@ -221,11 +224,13 @@ def test_batch_mode_still_refuses_edge_clipped_items() -> None:
     service = InferenceService()
     result = service.inspect_frame(
         scene,
-        request=InferenceRequest(crop_key="potato", batch_mode=True),
+        request=InferenceRequest(crop_key="potato", batch_mode=True, allow_scale_estimate=True),
     )
-    occluded = [
+    graded = [
         i for i in result.instances
-        if i.decision and i.decision.status is Status.OCCLUDED
+        if i.decision and (i.decision.size_class or i.decision.band_name)
     ]
-    graded = [i for i in result.instances if i.decision and i.decision.size_class]
-    assert occluded and not graded  # the clipped item never receives a class
+    clipped = [i for i in result.instances if "TOUCHES_FRAME_EDGE" in i.quality_flags]
+    assert clipped, "fixture must contain an edge-clipped item"
+    assert clipped[0] in graded
+    assert any("EDGE_CLIPPED_GRADED" in f for f in clipped[0].quality_flags)

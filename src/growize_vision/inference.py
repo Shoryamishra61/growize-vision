@@ -193,6 +193,23 @@ class InferenceService:
             screen_started = time.perf_counter()
             present, reason = self.identity_service.detect_produce_presence(input_bgr)
             timings["input_screen_ms"] = (time.perf_counter() - screen_started) * 1000
+            if not present and reason.startswith("NON_PRODUCE"):
+                # Real vegetables on white paper (thin pods especially) can
+                # trip the document/text heuristic.  A species model answer
+                # at the full confidence floor is stronger evidence than the
+                # screen: continue with an explicit override warning.
+                if getattr(self.identity_service, "is_classifier_available", False):
+                    override = self.identity_service.predict_species(
+                        input_bgr, assume_present=True
+                    )
+                    if override is not None and override.species_key.lower() != "unknown":
+                        present = True
+                        warnings.append(
+                            "PRESENCE_SCREEN_OVERRIDE: presence screen said "
+                            f"{reason}, but the species model identified "
+                            f"'{override.species_key}' at full confidence; "
+                            "continuing with that identification."
+                        )
             if not present:
                 status = Status.NOT_PRODUCE
                 if reason == "FRAME_TOO_DARK":
@@ -373,6 +390,35 @@ class InferenceService:
                     )
             timings["crop_identity_ms"] = (time.perf_counter() - identity_started) * 1000
 
+        # Appearance estimate runs BEFORE instance building so a failed
+        # estimate (busy contour, no clean footprint) can fall through to the
+        # distance-assumed scale instead of dead-ending as "scale needed".
+        appearance_attempted = False
+        appearance_estimate = None
+        if (
+            request.allow_appearance_estimate
+            and not calibration.valid
+            and request.crop_key
+            and len(segmentation.objects) == 1
+            and self.identity_service is not None
+        ):
+            appearance_attempted = True
+            appearance_estimate = self.identity_service.estimate_appearance_size(
+                input_bgr, request.crop_key
+            )
+            if appearance_estimate is not None:
+                warnings.append(appearance_estimate.disclaimer)
+            else:
+                title_key = (request.crop_key or "").strip().replace(" ", "_").title()
+                if hasattr(self.identity_service, "stats") and title_key not in (
+                    self.identity_service.stats or {}
+                ):
+                    warnings.append(
+                        "APPEARANCE_PRIORS_MISSING: no real-photo size references "
+                        f"exist for '{request.crop_key}' yet, so no uncalibrated "
+                        "SMALL/BIG estimate is possible for this crop."
+                    )
+
         if not calibration.valid and len(segmentation.objects) > 1 and not request.batch_mode:
             # Fully automated flow: several vegetables in frame means a batch,
             # so grade them relative to each other without asking the operator
@@ -392,19 +438,15 @@ class InferenceService:
             and request.allow_scale_estimate
             and (
                 request.batch_mode
-                or (
-                    len(segmentation.objects) == 1
-                    and not self._crop_has_appearance_priors(request.crop_key)
-                )
+                or (len(segmentation.objects) == 1 and appearance_estimate is None)
             )
         ):
             # Absolute grading anchor: a distance-assumed scale lets every item
             # be compared against the crop's published size bands (the
             # "average big/small size"), instead of a relative split that
             # forces one small/medium/big even when all items are big (or all
-            # small).  For single items, appearance priors are preferred when
-            # they exist; batches always use the estimated scale because the
-            # per-image appearance estimator handles one object only.
+            # small).  Singles prefer a real appearance estimate when one is
+            # possible; the estimated scale backs up every case it cannot.
             calibration = calibrate_from_camera_prior(
                 processing_bgr.shape, self.settings.calibration
             )
@@ -442,7 +484,11 @@ class InferenceService:
             if mismatch:
                 message, refuse = mismatch
                 warnings.append(message)
-                if refuse:
+                # Hard refusal on crop mismatch is opt-in: automated flows
+                # must never dead-end on a single over-confident prediction
+                # (out-of-domain frames saturate the classifier).  Operators
+                # who want the guard set cross_check_species=True.
+                if refuse and request.cross_check_species is True:
                     species_refusal = message
 
         instances = self._build_instances(
@@ -501,30 +547,13 @@ class InferenceService:
                           else self.identity_service.classifier_path)
             if model_path.exists():
                 result.model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
-        if request.allow_appearance_estimate and not calibration.valid and request.crop_key and len(instances) == 1:
-            if self.identity_service is None:
-                from .crop_identity import CropIdentityService
-
-                self.identity_service = CropIdentityService()
-            estimate = self.identity_service.estimate_appearance_size(input_bgr, request.crop_key)
-            if estimate is not None:
-                result.appearance_estimate = asdict(estimate)
-                result.warnings.append(estimate.disclaimer)
-            else:
-                title_key = request.crop_key.strip().replace(" ", "_").title()
-                if hasattr(self.identity_service, "stats") and title_key not in (
-                    self.identity_service.stats or {}
-                ):
-                    result.warnings.append(
-                        "APPEARANCE_PRIORS_MISSING: no real-photo size references "
-                        f"exist for '{request.crop_key}' yet, so no uncalibrated "
-                        "SMALL/BIG estimate is possible for this crop."
-                    )
+        if appearance_attempted and appearance_estimate is not None:
+            result.appearance_estimate = asdict(appearance_estimate)
         render_start = time.perf_counter()
         result.annotated_image = render_inspection(processing_bgr, result)
         if result.appearance_estimate is not None:
             result.annotated_image = self.identity_service.render_appearance_overlay(
-                input_bgr, estimate, request.crop_key,
+                input_bgr, appearance_estimate, request.crop_key,
             )
         result.timings_ms["render_ms"] = (time.perf_counter() - render_start) * 1000.0
         result.processing_ms = (time.perf_counter() - started) * 1000.0
@@ -544,6 +573,14 @@ class InferenceService:
         species_refusal: str | None = None,
     ) -> list[InstanceObservation]:
         instances: list[InstanceObservation] = []
+        # A single object dominating the frame content is a close-up, not a
+        # busy scene: the plain-mat border check necessarily sees produce
+        # colours on phone photos taken close to the vegetable.
+        frame_area = float(processing_bgr.shape[0] * processing_bgr.shape[1])
+        single_closeup = (
+            len(segmentation.objects) == 1
+            and float(segmentation.objects[0].area_px) > 0.25 * frame_area
+        )
         for index, obj in enumerate(segmentation.objects, start=1):
             instance_id = f"obj_{index:03d}"
             visible_fraction = 1.0
@@ -568,6 +605,15 @@ class InferenceService:
             # without trusted calibration, then quality, then occlusion, then
             # policy, then metrology.  Batch mode may still grade relatively.
             batch_eligible = bool(request.batch_mode)
+            # Production estimate flows (auto crop with estimated scale, or
+            # batch sorting) never dead-end on environment gates: a sorter
+            # must label every detectable item.  Every gate skipped below
+            # leaves a named warning instead of a refusal.
+            tolerant = bool(
+                request.batch_mode
+                or request.allow_scale_estimate
+                or request.allow_appearance_estimate
+            )
             if not calibration.valid and not batch_eligible:
                 instance.decision = GradeDecision(
                     size_class=None,
@@ -578,7 +624,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif segmentation.background_busy and not request.batch_mode:
+            elif segmentation.background_busy and not tolerant and not single_closeup:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.OUT_OF_DISTRIBUTION,
@@ -590,16 +636,13 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif not quality.passed and not (
-                request.batch_mode
+            elif not quality.passed and not tolerant and not (
+                single_closeup
                 and not [
                     flag for flag in quality.flags
                     if not flag.startswith("BUSY_BACKGROUND")
                 ]
             ):
-                # Background-only failure is tolerated in batch mode (the
-                # busy-mat check trips easily when produce sits near the frame
-                # border); blur/glare/contrast still block.
                 blocking = [
                     flag for flag in quality.flags
                     if not flag.startswith("BUSY_BACKGROUND")
@@ -613,7 +656,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif obj.touches_edge:
+            elif obj.touches_edge and not tolerant:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.OCCLUDED,
@@ -625,7 +668,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif obj.touches_marker:
+            elif obj.touches_marker and not tolerant:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.OCCLUDED,
@@ -637,7 +680,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags:
+            elif "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags and not tolerant:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.OCCLUDED,
@@ -649,7 +692,7 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif "SEGMENTATION_DISAGREEMENT" in obj.flags:
+            elif "SEGMENTATION_DISAGREEMENT" in obj.flags and not tolerant:
                 instance.decision = GradeDecision(
                     size_class=None,
                     status=Status.REVIEW_BORDERLINE,
@@ -663,84 +706,115 @@ class InferenceService:
                     policy_version=getattr(policy, "policy_version", None),
                     calibration_id=calibration.calibration_id,
                 )
-            elif species_refusal:
-                instance.decision = GradeDecision(
-                    size_class=None,
-                    status=Status.REVIEW_BORDERLINE,
-                    reasons=[species_refusal],
-                    policy=policy,
-                    policy_version=getattr(policy, "policy_version", None),
-                    calibration_id=calibration.calibration_id,
-                )
-            elif request.batch_mode and (
-                not calibration.valid
-                or policy is None
-                or (policy.threshold_mm is None and not policy.bands)
-            ):
-                # Batch mode grades items relative to the whole frame once
-                # every instance exists.  No crop policy is required for the
-                # relative split (grades are sizes within this frame, not
-                # crop-specific millimetre claims).
-                instance.decision = GradeDecision(
-                    size_class=None,
-                    status=Status.REVIEW_BORDERLINE,
-                    reasons=["BATCH_RELATIVE_PENDING"],
-                )
-            elif policy is None or policy_error:
-                instance.decision = GradeDecision(
-                    size_class=None,
-                    status=Status.POLICY_REQUIRED,
-                    reasons=[policy_error or "Select a supported crop policy."],
-                    policy=policy,
-                    policy_version=getattr(policy, "policy_version", None),
-                    calibration_id=calibration.calibration_id,
-                )
-            elif policy.threshold_mm is None and not policy.bands and not policy.demo:
-                instance.decision = evaluate_measurement(None, policy, calibration.calibration_id)
-                instance.decision.reasons = [
-                    "NO_THRESHOLD_POLICY: no ARL-approved or published-reference "
-                    "threshold exists for this crop. Physical measurement is "
-                    "withheld in strict mode."
-                ]
-            else:
-                try:
-                    measurement, contour_mm = measure_contour(
-                        obj.contour_px,
-                        calibration,
-                        policy.metric,
-                        self.settings.calibration,
-                    )
-                except MetrologyError as exc:
+            if instance.decision is None:
+                if species_refusal:
                     instance.decision = GradeDecision(
                         size_class=None,
                         status=Status.REVIEW_BORDERLINE,
-                        reasons=[f"METROLOGY_FAILED: {exc}"],
+                        reasons=[species_refusal],
                         policy=policy,
-                        policy_version=policy.policy_version,
+                        policy_version=getattr(policy, "policy_version", None),
                         calibration_id=calibration.calibration_id,
                     )
-                else:
-                    instance.measurement = measurement
-                    instance.contour_mm = contour_mm.tolist()
-                    instance.decision = evaluate_measurement(
-                        measurement, policy, calibration.calibration_id
+                elif request.batch_mode and (
+                    not calibration.valid
+                    or policy is None
+                    or (policy.threshold_mm is None and not policy.bands)
+                ):
+                    # Batch mode grades items relative to the whole frame once
+                    # every instance exists.  No crop policy is required for the
+                    # relative split (grades are sizes within this frame, not
+                    # crop-specific millimetre claims).
+                    instance.decision = GradeDecision(
+                        size_class=None,
+                        status=Status.REVIEW_BORDERLINE,
+                        reasons=["BATCH_RELATIVE_PENDING"],
                     )
-                    if (
-                        policy.metric == "min_area_rect_long_mm"
-                        and measurement.secondary.get("curvature_ratio", 0.0) > 1.45
-                    ):
-                        instance.quality_flags.append(
-                            "HIGH_CURVATURE: straight-axis metric may be biased for bent pods/leaves."
+                elif policy is None or policy_error:
+                    instance.decision = GradeDecision(
+                        size_class=None,
+                        status=Status.POLICY_REQUIRED,
+                        reasons=[policy_error or "Select a supported crop policy."],
+                        policy=policy,
+                        policy_version=getattr(policy, "policy_version", None),
+                        calibration_id=calibration.calibration_id,
+                    )
+                elif policy.threshold_mm is None and not policy.bands and not policy.demo:
+                    instance.decision = evaluate_measurement(None, policy, calibration.calibration_id)
+                    instance.decision.reasons = [
+                        "NO_THRESHOLD_POLICY: no ARL-approved or published-reference "
+                        "threshold exists for this crop. Physical measurement is "
+                        "withheld in strict mode."
+                    ]
+                else:
+                    try:
+                        measurement, contour_mm = measure_contour(
+                            obj.contour_px,
+                            calibration,
+                            policy.metric,
+                            self.settings.calibration,
                         )
-                    if (
-                        request.batch_mode
-                        and instance.decision.status is Status.REVIEW_BORDERLINE
-                        and policy.bands
-                    ):
-                        instance.decision = _assign_nearest_band(
-                            instance.decision, policy, calibration.calibration_id
+                    except MetrologyError as exc:
+                        if request.batch_mode:
+                            # A merged bunch or tangled pile has no single
+                            # clean centreline/diameter: rank it relative to
+                            # the other items instead of refusing.
+                            instance.decision = GradeDecision(
+                                size_class=None,
+                                status=Status.REVIEW_BORDERLINE,
+                                reasons=[
+                                    "BATCH_RELATIVE_PENDING",
+                                    f"METROLOGY_UNRELIABLE: {exc}",
+                                ],
+                            )
+                        else:
+                            instance.decision = GradeDecision(
+                                size_class=None,
+                                status=Status.REVIEW_BORDERLINE,
+                                reasons=[f"METROLOGY_FAILED: {exc}"],
+                                policy=policy,
+                                policy_version=policy.policy_version,
+                                calibration_id=calibration.calibration_id,
+                            )
+                    else:
+                        instance.measurement = measurement
+                        instance.contour_mm = contour_mm.tolist()
+                        instance.decision = evaluate_measurement(
+                            measurement, policy, calibration.calibration_id
                         )
+                        if (
+                            policy.metric == "min_area_rect_long_mm"
+                            and measurement.secondary.get("curvature_ratio", 0.0) > 1.45
+                        ):
+                            instance.quality_flags.append(
+                                "HIGH_CURVATURE: straight-axis metric may be biased for bent pods/leaves."
+                            )
+                        if (
+                            request.batch_mode
+                            and instance.decision.status is Status.REVIEW_BORDERLINE
+                            and policy.bands
+                        ):
+                            instance.decision = _assign_nearest_band(
+                                instance.decision, policy, calibration.calibration_id
+                            )
 
+            if tolerant and instance.decision is not None:
+                # Tolerated conditions are recorded as named flags so the
+                # verdict explains what it tolerated instead of hiding it.
+                if obj.touches_edge:
+                    instance.quality_flags.append(
+                        "EDGE_CLIPPED_GRADED: size taken from the visible part only."
+                    )
+                if "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags:
+                    instance.quality_flags.append(
+                        "POSSIBLY_MERGED_OR_BUNCH: mask may be several touching "
+                        "items or one bunch; graded as a single unit."
+                    )
+                if "SEGMENTATION_DISAGREEMENT" in obj.flags:
+                    instance.quality_flags.append(
+                        "SEGMENTATION_DISAGREEMENT_GRADED: silhouette methods "
+                        "disagreed; grade is approximate."
+                    )
             if instance.decision and instance.decision.measurement:
                 instance.measurement = instance.decision.measurement
             instances.append(instance)
@@ -769,7 +843,9 @@ class InferenceService:
         """
         pending = [
             i for i in instances
-            if i.decision is not None and i.decision.reasons == ["BATCH_RELATIVE_PENDING"]
+            if i.decision is not None
+            and i.decision.reasons
+            and i.decision.reasons[0] == "BATCH_RELATIVE_PENDING"
         ]
         if not pending:
             return
@@ -930,13 +1006,16 @@ class InferenceService:
                 None,
                 ["Multiple vegetables detected; no single aggregate size class is emitted."],
             )
-        if segmentation.background_busy:
+        any_accepted = any(
+            i.decision is not None and i.decision.accepted for i in instances
+        )
+        if segmentation.background_busy and not any_accepted:
             return (
                 Status.OUT_OF_DISTRIBUTION,
                 None,
                 ["Busy background: use the plain matte station."],
             )
-        if not quality.passed:
+        if not quality.passed and not any_accepted:
             return Status.LOW_IMAGE_QUALITY, None, list(quality.flags)
         if policy is None:
             return (
