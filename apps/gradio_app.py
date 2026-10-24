@@ -147,7 +147,7 @@ def present_result(result, session=None):
             "appearance comparison, not millimetres: framing and distance change it. "
             "Add the printed marker or any known-length reference for measured grading."
         )
-    elif result.status != Status.ACCEPTED and any(
+    elif result.status is Status.CALIBRATION_REQUIRED and any(
         w.startswith("APPEARANCE_PRIORS_MISSING") for w in result.warnings
     ):
         title = "Scale needed (no size references for this crop)"
@@ -513,49 +513,11 @@ def build_app():
                     outputs=[source, output, status, ref_points_state, ref_points_label],
                     queue=False,
                 )
-            with gr.Tab("Camera"):
-                session = gr.State(LiveSession())
-                camera_crop = gr.Dropdown(
-                    choices=CROP_UI_CHOICES,
-                    value=crop_choices[0] if crop_choices else None,
-                    label="Crop",
-                )
-                camera_station = gr.Checkbox(
-                    value=True,
-                    label="Station mode (fixed camera): calibrate once with the marker visible",
-                )
-                with gr.Row():
-                    camera = gr.Image(
-                        sources=["webcam"],
-                        type="numpy",
-                        streaming=True,
-                        label="Live camera",
-                        height=320,
-                    )
-                    with gr.Column():
-                        camera_output = gr.Image(label="Output", interactive=False, height=320)
-                        camera_status = gr.HTML(
-                            result_html("Camera idle", "Allow camera access, then start capture.")
-                        )
-                camera.stream(
-                    live_inspect_ui,
-                    [camera, session, camera_crop, camera_station],
-                    [camera_output, camera_status, session],
-                    concurrency_id="inspection",
-                    concurrency_limit=1,
-                    trigger_mode="always_last",
-                )
-                camera.clear(
-                    lambda: (
-                        None,
-                        result_html("Camera idle", "Start capture to inspect another item."),
-                        LiveSession(),
-                    ),
-                    outputs=[camera_output, camera_status, session],
-                    concurrency_id="inspection",
-                    concurrency_limit=1,
-                )
-            with gr.Tab("Video"):
+            # Live-streaming Camera tab removed: the in-browser webcam stream
+            # does not render on the embedded Space. Camera workflows still
+            # work through the Video tab (webcam recording) and image upload;
+            # live_inspect_ui and LiveSession remain for API/embedding use.
+            with gr.Tab("Camera / Video"):
                 video_crop = gr.Dropdown(
                     choices=CROP_UI_CHOICES,
                     value=crop_choices[0] if crop_choices else None,
