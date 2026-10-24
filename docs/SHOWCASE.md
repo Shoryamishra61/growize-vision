@@ -50,17 +50,6 @@ appearance-based estimate, clearly labelled as uncalibrated.
 
 ## Batches and bunches — every item graded
 
-### Okra pile (mixed sizes, some touching)
-![Okra pile](assets/okra_pile.png)
-**Result:** `Okra · 2 SMALL · 1 BIG` — touching items were separated
-(watershed split of the merged mask) and each pod graded individually.
-
-### Okra bunch (uniform size)
-![Okra bunch](assets/okra_bunch.png)
-**Result:** `Okra · 3 MEDIUM` — a uniform bunch: all items within 10% of
-each other, so every item receives the same grade instead of an invented
-spread.
-
 ### Okra overlap (two crossing pods)
 ![Okra overlap](assets/okra_overlap.png)
 **Result:** `Okra · 1 MEDIUM · 1 BIG` — overlapping produce separated into
