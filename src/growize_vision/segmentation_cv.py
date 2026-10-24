@@ -328,3 +328,102 @@ def segment_foreground(
         ensemble_iou=ensemble_iou,
         warnings=warnings_list,
     )
+
+def _rebuild_object(part_mask, image_shape, inherited_flags):
+    """Build a SegmentedObject from a binary part mask."""
+    contours, _ = cv2.findContours(
+        part_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    if not contours:
+        return None
+    contour = max(contours, key=cv2.contourArea)
+    area = float(cv2.contourArea(contour))
+    x, y, w, h = cv2.boundingRect(contour)
+    hull_area = float(abs(cv2.contourArea(cv2.convexHull(contour)))) or 1.0
+    touches_edge = bool(
+        x <= 2 or y <= 2
+        or x + w >= image_shape[1] - 2
+        or y + h >= image_shape[0] - 2
+    )
+    flags = list(inherited_flags)
+    if touches_edge and "TOUCHES_FRAME_EDGE" not in flags:
+        flags.append("TOUCHES_FRAME_EDGE")
+    if "SPLIT_FROM_MERGED_MASK" not in flags:
+        flags.append("SPLIT_FROM_MERGED_MASK")
+    return SegmentedObject(
+        mask=part_mask,
+        contour_px=contour,
+        area_px=area,
+        bbox_px=(int(x), int(y), int(w), int(h)),
+        touches_edge=touches_edge,
+        solidity=area / hull_area,
+        holes_px=0.0,
+        flags=flags,
+    )
+
+
+def split_touching_objects(objects, image_bgr, min_area_px):
+    """Split merged masks of touching single-unit produce (watershed).
+
+    Piles and rows of produce segment as one mass; a distance-transform
+    watershed recovers the individual items.  Conservative by design: an
+    object is only split when its mask is flagged as possibly merged or it
+    covers a large share of the frame, and the split is kept only when
+    every retained part is still a substantial share of the original.
+    Returns the new object list, or None when nothing was split.
+    """
+    if not objects:
+        return None
+    frame_area = float(image_bgr.shape[0] * image_bgr.shape[1])
+    changed = False
+    result = []
+    for obj in objects:
+        suspicious = (
+            "LOW_SOLIDITY_POSSIBLY_MERGED" in obj.flags
+            or obj.area_px > 0.15 * frame_area
+        )
+        if not suspicious:
+            result.append(obj)
+            continue
+        contour = np.asarray(obj.contour_px, dtype=np.float32).reshape(-1, 1, 2)
+        _c, (rw, rh), _a = cv2.minAreaRect(contour)
+        aspect = max(rw, rh) / max(min(rw, rh), 1.0)
+        if aspect > 3.2:
+            # One long bent pod/fruit, not a merged pile: never split it.
+            result.append(obj)
+            continue
+        mask = obj.mask
+        dist = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+        peak = float(dist.max())
+        if peak < 14.0:
+            result.append(obj)
+            continue
+        _, seeds = cv2.threshold(dist, 0.45 * peak, 255, 0)
+        seeds = seeds.astype(np.uint8)
+        n_seeds, seed_labels = cv2.connectedComponents(seeds)
+        if n_seeds - 1 < 2 or n_seeds - 1 > 8:
+            result.append(obj)
+            continue
+        markers = seed_labels.astype(np.int32)
+        markers[mask == 0] = 0
+        bgr = image_bgr if image_bgr.dtype == np.uint8 else image_bgr.astype(np.uint8)
+        ws = cv2.watershed(bgr, markers)
+        parts = []
+        inherited = [f for f in obj.flags if f != "LOW_SOLIDITY_POSSIBLY_MERGED"]
+        for label in range(1, n_seeds):
+            part_mask = np.where(ws == label, 255, 0).astype(np.uint8)
+            part_mask = cv2.bitwise_and(part_mask, mask)
+            part = _rebuild_object(part_mask, image_bgr.shape, inherited)
+            if part is None:
+                continue
+            if part.area_px >= 0.15 * obj.area_px and part.area_px >= min_area_px:
+                parts.append(part)
+        if len(parts) < 2:
+            result.append(obj)
+            continue
+        changed = True
+        result.extend(parts[:6])
+    if not changed:
+        return None
+    result.sort(key=lambda o: o.area_px, reverse=True)
+    return result

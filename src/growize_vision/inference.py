@@ -463,6 +463,24 @@ class InferenceService:
             except Exception as exc:  # ConfigError and unexpected lookup errors
                 policy_error = str(exc)
                 warnings.append(policy_error)
+        if policy is not None and "bunch" not in (policy.physical_unit or ""):
+            # Single-unit crops (pods, tubers, fruits) that were segmented as
+            # one merged mass are split into individual items so a pile or row
+            # of produce grades item by item.  Bunch crops keep the bunch as
+            # the unit.
+            from .segmentation_cv import split_touching_objects
+
+            split = split_touching_objects(
+                segmentation.objects,
+                processing_bgr,
+                self.settings.min_object_area_px,
+            )
+            if split is not None:
+                segmentation.objects[:] = split
+                warnings.append(
+                    f"MERGED_MASK_SPLIT: touching items were separated; "
+                    f"{len(split)} items detected."
+                )
         if policy and policy.demo:
             warnings.append(self.settings.demo_banner)
         elif policy and policy.approval_status == "PUBLISHED_REFERENCE":
