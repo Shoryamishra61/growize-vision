@@ -187,13 +187,11 @@ def present_result(result, session=None):
             f"{' · '.join(parts)}. Each item is outlined and labelled with its "
             "size on the output image."
         )
-        if any(
-            i.decision and any(r.startswith("BATCH_RELATIVE:") for r in i.decision.reasons)
-            for i in result.instances
-        ):
-            message += " Sizes are relative to this batch — no scale in the photo."
-        else:
+        any_measured = any(i.measurement is not None for i in result.instances)
+        if any_measured:
             message += " Graded against published size references using estimated scale."
+        else:
+            message += " Sizes are relative to this batch — no scale in the photo."
         if any(w.startswith("CROP_UNRESOLVED") for w in result.warnings):
             message += " Vegetable not identified: grades are by size only."
     elif result.status == Status.ACCEPTED and (

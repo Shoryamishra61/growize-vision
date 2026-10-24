@@ -990,13 +990,11 @@ class InferenceService:
                     parts.append(f"{big} BIG")
                 ungraded = len(instances) - len(accepted)
                 note = f", {ungraded} ungraded" if ungraded else ""
-                relative = any(
-                    r.startswith("BATCH_RELATIVE:") for i in accepted for r in i.decision.reasons
-                )
+                any_measured = any(i.measurement is not None for i in accepted)
                 basis = (
-                    "relative to this frame's items (no scale, not millimetres)"
-                    if relative
-                    else "against published size references (estimated scale unless a marker/station was used)"
+                    "against published size references (estimated scale unless a marker/station was used)"
+                    if any_measured
+                    else "relative to this frame's items (no scale, not millimetres)"
                 )
                 return (
                     Status.MULTIPLE_OBJECTS,
