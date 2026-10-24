@@ -1,0 +1,113 @@
+{
+ "trainer": "lean-streaming-sgd",
+ "rows": {
+  "test": 4108,
+  "train": 20423,
+  "validation": 4080
+ },
+ "classes": [
+  "Bean",
+  "Bitter_Gourd",
+  "Bottle_Gourd",
+  "Brinjal",
+  "Broccoli",
+  "Cabbage",
+  "Capsicum",
+  "Carrot",
+  "Cauliflower",
+  "Chili",
+  "Cucumber",
+  "Okra",
+  "Onion",
+  "Papaya",
+  "Potato",
+  "Pumpkin",
+  "Radish",
+  "Spinach",
+  "Tomato"
+ ],
+ "epochs": 5,
+ "validation_accuracy": 0.9794117647058823,
+ "validation_macro_f1": 0.9876305078382764,
+ "test_accuracy": 0.9637293086660176,
+ "test_macro_f1": 0.9803911924424015,
+ "test_per_class": {
+  "Cauliflower": [
+   178,
+   178
+  ],
+  "Brinjal": [
+   166,
+   166
+  ],
+  "Bitter_Gourd": [
+   113,
+   114
+  ],
+  "Carrot": [
+   101,
+   101
+  ],
+  "Papaya": [
+   114,
+   114
+  ],
+  "Capsicum": [
+   129,
+   129
+  ],
+  "Potato": [
+   588,
+   684
+  ],
+  "Broccoli": [
+   140,
+   140
+  ],
+  "Pumpkin": [
+   149,
+   150
+  ],
+  "Bottle_Gourd": [
+   105,
+   105
+  ],
+  "Cucumber": [
+   322,
+   324
+  ],
+  "Cabbage": [
+   160,
+   161
+  ],
+  "Radish": [
+   135,
+   135
+  ],
+  "Bean": [
+   534,
+   536
+  ],
+  "Tomato": [
+   195,
+   197
+  ],
+  "Okra": [
+   424,
+   462
+  ],
+  "Spinach": [
+   6,
+   7
+  ],
+  "Onion": [
+   7,
+   7
+  ],
+  "Chili": [
+   393,
+   398
+  ]
+ },
+ "elapsed_s": 1996.6641649999947
+}
